@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { brl } from '@/lib/format';
+import { supabase } from '../lib/supabase';
+import { brl } from '../lib/format';
 
 const monthLabels = {
   '2026-03': 'Março 2026',
@@ -145,10 +145,6 @@ function LoginScreen() {
 
         {err && <div className="error">{err}</div>}
         {msg && <div className="success">{msg}</div>}
-
-        <div className="muted" style={{ marginTop: 16, fontSize: 13 }}>
-          Depois do deploy, no iPhone você poderá usar: Safari → Compartilhar → Adicionar à Tela de Início.
-        </div>
       </div>
     </main>
   );
