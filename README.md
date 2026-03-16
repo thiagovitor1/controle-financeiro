@@ -1,29 +1,18 @@
-# Controle Financeiro V2 — PWA + Login + Supabase
+# Controle Financeiro V3 Core
 
-Esta é a V2 do projeto, agora preparada para:
-- login com e-mail e senha
-- dashboard inicial
-- seletor por mês
-- estrutura PWA (instalável no iPhone/Android)
-- conexão com Supabase
+Versão V3.1 com:
+- login
+- dashboard clean
+- contas
+- categorias
+- lançamentos
+- leitura e gravação no Supabase
+- base mobile-first
 
 ## Variáveis de ambiente
-Crie um arquivo `.env.local` com:
+Crie `.env.local` com:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://mkzvxbttqakycbzycsnl.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_jXp0z-MrX44FP4_cXJPoFQ_ANYPUOlS
 ```
-
-## Rodar localmente
-```bash
-npm install
-npm run dev
-```
-
-## Deploy
-Suba os arquivos no GitHub e deixe a Vercel atualizar automaticamente.
-
-## Próximo passo após deploy
-No iPhone:
-Safari → Compartilhar → Adicionar à Tela de Início
