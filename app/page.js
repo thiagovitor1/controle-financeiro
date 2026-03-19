@@ -1,701 +1,283 @@
+"use client";
 
-'use client';
+import { useMemo, useState } from "react";
 
-import { useEffect, useMemo, useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { brl } from '../lib/format';
+function moeda(v) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(Number(v || 0));
+}
 
-const MONTHS = {
-  '2026-03': 'Março 2026',
-  '2026-04': 'Abril 2026',
-  '2026-05': 'Maio 2026',
-  '2026-06': 'Junho 2026',
-  '2026-07': 'Julho 2026',
-  '2026-08': 'Agosto 2026',
-  '2026-09': 'Setembro 2026',
-  '2026-10': 'Outubro 2026',
-  '2026-11': 'Novembro 2026',
-  '2026-12': 'Dezembro 2026'
+const meses = [
+  "Janeiro 2026",
+  "Fevereiro 2026",
+  "Março 2026",
+  "Abril 2026",
+  "Maio 2026",
+  "Junho 2026",
+  "Julho 2026",
+  "Agosto 2026",
+  "Setembro 2026",
+  "Outubro 2026",
+  "Novembro 2026",
+  "Dezembro 2026",
+];
+
+const dadosBase = {
+  "Março 2026": {
+    entradas: 6894.07,
+    saidas: 7104.04,
+    saldoContas: 115.13,
+    cards: {
+      fixas: { valor: 2430.22, itens: 7 },
+      dividas: { valor: 1984.55, itens: 4 },
+      cartoes: { valor: 1587.10, itens: 3 },
+      variaveis: { valor: 1102.17, itens: 12 },
+      receitas: { valor: 6894.07, itens: 5 },
+    },
+  },
 };
 
-const FIXED_KEYWORDS = ['aluguel','condom','energia','internet','vivo','claro','faculdade','pensão','agua','água','apartamento','carro','seguro'];
-const DEBT_KEYWORDS = ['empréstimo','emprestimo','financiamento','acordo','bemol','dívida','divida'];
-
-function startEndFromMonth(monthKey) {
-  const [year, month] = monthKey.split('-').map(Number);
-  const start = new Date(year, month - 1, 1);
-  const end = new Date(year, month, 0);
-  const toISO = (d) => d.toISOString().slice(0, 10);
-  return { start: toISO(start), end: toISO(end) };
-}
-function monthDate(monthKey) { return `${monthKey}-01`; }
-function addMonths(dateString, monthsToAdd) {
-  const d = new Date(dateString + 'T12:00:00');
-  d.setMonth(d.getMonth() + monthsToAdd);
-  return d.toISOString().slice(0, 10);
-}
-function includesKeyword(text, keywords) {
-  const normalized = String(text || '').toLowerCase();
-  return keywords.some((k) => normalized.includes(k));
-}
-function classifyTransaction(tx) {
-  if (tx.tx_type === 'receita') return 'receitas';
-  if (tx.tx_type === 'pagamento_cartao') return 'cartoes';
-  if (includesKeyword(tx.description, DEBT_KEYWORDS)) return 'dividas';
-  if (includesKeyword(tx.description, FIXED_KEYWORDS)) return 'contas_fixas';
-  return 'gastos_variaveis';
-}
-
-function LoginScreen() {
-  const [mode, setMode] = useState('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setErr('');
-    setMsg('');
-    if (mode === 'signup') {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { full_name: fullName } }
-      });
-      if (error) return setErr(error.message);
-      setMsg('Conta criada. Confira o e-mail para confirmar o cadastro.');
-      return;
+function getDados(mes) {
+  return (
+    dadosBase[mes] || {
+      entradas: 0,
+      saidas: 0,
+      saldoContas: 0,
+      cards: {
+        fixas: { valor: 0, itens: 0 },
+        dividas: { valor: 0, itens: 0 },
+        cartoes: { valor: 0, itens: 0 },
+        variaveis: { valor: 0, itens: 0 },
+        receitas: { valor: 0, itens: 0 },
+      },
     }
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return setErr(error.message);
-  }
+  );
+}
+
+function TopCard({ titulo, valor, destaque = false }) {
+  return (
+    <div
+      style={{
+        background: destaque ? "rgba(124, 92, 255, 0.16)" : "rgba(12, 19, 44, 0.78)",
+        border: destaque ? "1px solid rgba(124, 92, 255, 0.35)" : "1px solid rgba(120, 146, 255, 0.14)",
+        borderRadius: 22,
+        padding: "18px 18px 16px",
+        minHeight: 108,
+        boxShadow: destaque
+          ? "0 12px 30px rgba(71, 82, 196, 0.16)"
+          : "0 10px 26px rgba(0,0,0,0.18)",
+        backdropFilter: "blur(10px)",
+      }}
+    >
+      <div style={{ color: "rgba(222,228,255,0.78)", fontSize: 15, marginBottom: 10 }}>
+        {titulo}
+      </div>
+      <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.03em" }}>{valor}</div>
+    </div>
+  );
+}
+
+function ResumoCard({ titulo, valor, itens }) {
+  return (
+    <div
+      style={{
+        background: "rgba(12, 19, 44, 0.72)",
+        border: "1px solid rgba(120, 146, 255, 0.14)",
+        borderRadius: 20,
+        padding: "16px 16px 14px",
+        minHeight: 118,
+        boxShadow: "0 8px 22px rgba(0,0,0,0.16)",
+      }}
+    >
+      <div style={{ color: "rgba(226,231,255,0.86)", fontSize: 16, marginBottom: 10, fontWeight: 600 }}>
+        {titulo}
+      </div>
+      <div style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.1 }}>{valor}</div>
+      <div style={{ marginTop: 10, color: "rgba(200,208,245,0.72)", fontSize: 14 }}>
+        {itens} item(ns)
+      </div>
+    </div>
+  );
+}
+
+function BottomNav() {
+  const itemStyle = {
+    flex: 1,
+    textAlign: "center",
+    color: "rgba(231,236,255,0.9)",
+    fontWeight: 700,
+    fontSize: 16,
+    padding: "12px 8px",
+    borderRadius: 16,
+  };
 
   return (
-    <main className="page">
-      <div className="loginBox card">
-        <div className="badge">Controle Financeiro • V3.4</div>
-        <h1 style={{ marginTop: 0 }}>{mode === 'login' ? 'Entrar' : 'Criar conta'}</h1>
-        <p className="muted">Home minimalista com foco em resumo.</p>
-        <form onSubmit={handleSubmit} className="grid" style={{ marginTop: 18 }}>
-          {mode === 'signup' && <input placeholder="Nome completo" value={fullName} onChange={(e) => setFullName(e.target.value)} />}
-          <input placeholder="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input placeholder="Senha" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          <button type="submit">{mode === 'login' ? 'Entrar' : 'Criar conta'}</button>
-          <button type="button" className="secondary" onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setErr(''); setMsg(''); }}>
-            {mode === 'login' ? 'Quero criar conta' : 'Já tenho conta'}
+    <div
+      style={{
+        position: "sticky",
+        bottom: 16,
+        marginTop: 24,
+        background: "rgba(8, 14, 34, 0.92)",
+        border: "1px solid rgba(122, 147, 255, 0.16)",
+        borderRadius: 24,
+        padding: 10,
+        display: "grid",
+        gridTemplateColumns: "repeat(5, 1fr)",
+        gap: 8,
+        backdropFilter: "blur(14px)",
+        boxShadow: "0 16px 34px rgba(0,0,0,0.28)",
+      }}
+    >
+      <div style={{ ...itemStyle, background: "rgba(124, 92, 255, 0.16)" }}>Início</div>
+      <div style={itemStyle}>Contas</div>
+      <div style={itemStyle}>Lançar</div>
+      <div style={itemStyle}>Cartões</div>
+      <div style={itemStyle}>Mais</div>
+    </div>
+  );
+}
+
+export default function Page() {
+  const [mes, setMes] = useState("Março 2026");
+  const dados = useMemo(() => getDados(mes), [mes]);
+  const saldoMes = dados.entradas - dados.saidas;
+
+  return (
+    <main
+      style={{
+        minHeight: "100vh",
+        background:
+          "radial-gradient(circle at top, #18285d 0%, #09122e 38%, #050a19 100%)",
+        color: "#F2F5FF",
+        padding: "20px 16px 28px",
+        fontFamily:
+          'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      }}
+    >
+      <div style={{ maxWidth: 1180, margin: "0 auto" }}>
+        <section
+          style={{
+            background: "rgba(11, 19, 45, 0.72)",
+            border: "1px solid rgba(120,146,255,0.15)",
+            borderRadius: 28,
+            padding: "18px 18px 16px",
+            boxShadow: "0 16px 38px rgba(0,0,0,0.22)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 16,
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                display: "inline-flex",
+                padding: "8px 14px",
+                borderRadius: 999,
+                background: "rgba(91, 126, 255, 0.18)",
+                color: "#DCE5FF",
+                fontWeight: 700,
+                fontSize: 14,
+                marginBottom: 12,
+              }}
+            >
+              Controle Financeiro • V3.5
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em" }}>
+              Olá, Thiago
+            </div>
+            <div style={{ marginTop: 6, color: "rgba(212,220,255,0.72)", fontSize: 15 }}>
+              Resumo limpo, rápido e com visual mais próximo de app.
+            </div>
+          </div>
+
+          <button
+            style={{
+              background: "transparent",
+              color: "rgba(232,236,255,0.85)",
+              border: "1px solid rgba(130,148,255,0.18)",
+              borderRadius: 16,
+              padding: "12px 18px",
+              fontWeight: 700,
+              fontSize: 15,
+              cursor: "pointer",
+            }}
+          >
+            Sair
           </button>
-        </form>
-        {err && <div className="error">{err}</div>}
-        {msg && <div className="success">{msg}</div>}
+        </section>
+
+        <section
+          style={{
+            marginTop: 16,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "end",
+            gap: 16,
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <div style={{ color: "rgba(224,230,255,0.8)", fontSize: 15, marginBottom: 8 }}>
+              Mês principal
+            </div>
+            <select
+              value={mes}
+              onChange={(e) => setMes(e.target.value)}
+              style={{
+                background: "rgba(11, 19, 45, 0.82)",
+                color: "#F3F6FF",
+                border: "1px solid rgba(122,146,255,0.18)",
+                borderRadius: 14,
+                padding: "12px 14px",
+                minWidth: 220,
+                fontSize: 16,
+                outline: "none",
+              }}
+            >
+              {meses.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+        </section>
+
+        <section
+          style={{
+            marginTop: 16,
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+            gap: 14,
+          }}
+        >
+          <TopCard titulo="Saldo do mês" valor={moeda(saldoMes)} destaque />
+          <TopCard titulo="Entradas" valor={moeda(dados.entradas)} />
+          <TopCard titulo="Saídas" valor={moeda(dados.saidas)} />
+          <TopCard titulo="Saldo em contas" valor={moeda(dados.saldoContas)} />
+        </section>
+
+        <section
+          style={{
+            marginTop: 14,
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+            gap: 12,
+          }}
+        >
+          <ResumoCard titulo="Contas Fixas" valor={moeda(dados.cards.fixas.valor)} itens={dados.cards.fixas.itens} />
+          <ResumoCard titulo="Dívidas" valor={moeda(dados.cards.dividas.valor)} itens={dados.cards.dividas.itens} />
+          <ResumoCard titulo="Cartões" valor={moeda(dados.cards.cartoes.valor)} itens={dados.cards.cartoes.itens} />
+          <ResumoCard titulo="Gastos Variáveis" valor={moeda(dados.cards.variaveis.valor)} itens={dados.cards.variaveis.itens} />
+          <ResumoCard titulo="Receitas" valor={moeda(dados.cards.receitas.valor)} itens={dados.cards.receitas.itens} />
+        </section>
+
+        <BottomNav />
       </div>
     </main>
   );
-}
-
-function SummaryCard({ title, total, count }) {
-  return (
-    <div className="card" style={{ textAlign: 'left' }}>
-      <div className="muted">{title}</div>
-      <div className="kpiValue">{brl(total)}</div>
-      <div className="small muted" style={{ marginTop: 6 }}>{count} item(ns)</div>
-    </div>
-  );
-}
-
-function DashboardView({ summary }) {
-  return (
-    <>
-      <section className="grid kpis">
-        <div className="card"><div className="muted">Saldo do mês</div><div className="kpiValue">{brl(summary.net)}</div></div>
-        <div className="card"><div className="muted">Entradas</div><div className="kpiValue">{brl(summary.income)}</div></div>
-        <div className="card"><div className="muted">Saídas</div><div className="kpiValue">{brl(summary.expenses)}</div></div>
-        <div className="card"><div className="muted">Saldo em contas</div><div className="kpiValue">{brl(summary.accountsTotal)}</div></div>
-      </section>
-
-      <section className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginTop: 18 }}>
-        <SummaryCard title="Contas Fixas" total={summary.fixedTotal} count={summary.fixedCount} />
-        <SummaryCard title="Dívidas" total={summary.debtTotal} count={summary.debtCount} />
-        <SummaryCard title="Cartões" total={summary.cardsTotal} count={summary.cardsCount} />
-        <SummaryCard title="Gastos Variáveis" total={summary.variableTotal} count={summary.variableCount} />
-        <SummaryCard title="Receitas" total={summary.incomeTotal} count={summary.incomeCount} />
-      </section>
-    </>
-  );
-}
-
-function AccountsView({ accounts, onCreated }) {
-  const [name, setName] = useState('');
-  const [kind, setKind] = useState('corrente');
-  const [initialBalance, setInitialBalance] = useState('');
-  const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
-
-  async function submit(e) {
-    e.preventDefault();
-    setErr(''); setMsg('');
-    const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from('accounts').insert({
-      user_id: user.id,
-      name,
-      kind,
-      initial_balance: Number(initialBalance || 0)
-    });
-    if (error) return setErr(error.message);
-    setMsg('Conta criada com sucesso.');
-    setName(''); setKind('corrente'); setInitialBalance('');
-    onCreated?.();
-  }
-
-  return (
-    <div className="grid cols2">
-      <div className="card">
-        <h2 style={{ marginTop: 0 }}>Nova conta</h2>
-        <form onSubmit={submit} className="stack">
-          <input placeholder="Nome da conta" value={name} onChange={(e) => setName(e.target.value)} />
-          <select value={kind} onChange={(e) => setKind(e.target.value)}>
-            <option value="corrente">Conta corrente</option>
-            <option value="digital">Conta digital</option>
-            <option value="carteira">Carteira</option>
-            <option value="investimento">Investimento</option>
-          </select>
-          <input placeholder="Saldo inicial" type="number" step="0.01" value={initialBalance} onChange={(e) => setInitialBalance(e.target.value)} />
-          <button type="submit">Salvar conta</button>
-        </form>
-        {err && <div className="error">{err}</div>}
-        {msg && <div className="success">{msg}</div>}
-      </div>
-
-      <div className="card">
-        <h2 style={{ marginTop: 0 }}>Suas contas</h2>
-        {accounts.length ? (
-          <table className="table">
-            <thead><tr><th>Conta</th><th>Tipo</th><th className="money">Saldo inicial</th></tr></thead>
-            <tbody>
-              {accounts.map((a) => (
-                <tr key={a.id}>
-                  <td>{a.name}</td>
-                  <td>{a.kind}</td>
-                  <td className="money">{brl(a.initial_balance)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : <div className="empty">Cadastre sua primeira conta.</div>}
-      </div>
-    </div>
-  );
-}
-
-function CategoriesView({ categories, onCreated }) {
-  const [name, setName] = useState('');
-  const [categoryType, setCategoryType] = useState('despesa');
-  const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
-
-  async function submit(e) {
-    e.preventDefault();
-    setErr(''); setMsg('');
-    const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from('categories').insert({
-      user_id: user.id,
-      name,
-      category_type: categoryType
-    });
-    if (error) return setErr(error.message);
-    setMsg('Categoria criada com sucesso.');
-    setName('');
-    onCreated?.();
-  }
-
-  return (
-    <div className="grid cols2">
-      <div className="card">
-        <h2 style={{ marginTop: 0 }}>Nova categoria</h2>
-        <form onSubmit={submit} className="stack">
-          <input placeholder="Nome da categoria" value={name} onChange={(e) => setName(e.target.value)} />
-          <select value={categoryType} onChange={(e) => setCategoryType(e.target.value)}>
-            <option value="despesa">Despesa</option>
-            <option value="receita">Receita</option>
-            <option value="ambos">Ambos</option>
-          </select>
-          <button type="submit">Salvar categoria</button>
-        </form>
-        {err && <div className="error">{err}</div>}
-        {msg && <div className="success">{msg}</div>}
-      </div>
-
-      <div className="card">
-        <h2 style={{ marginTop: 0 }}>Categorias</h2>
-        {categories.length ? (
-          <table className="table">
-            <thead><tr><th>Categoria</th><th>Tipo</th></tr></thead>
-            <tbody>
-              {categories.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.name}</td>
-                  <td>{c.category_type}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : <div className="empty">Nenhuma categoria cadastrada.</div>}
-      </div>
-    </div>
-  );
-}
-
-function LaunchView({ accounts, categories, selectedMonth, transactions, onCreated }) {
-  const [txType, setTxType] = useState('despesa');
-  const [accountId, setAccountId] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [txDate, setTxDate] = useState(`${selectedMonth}-01`);
-  const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
-  const [status, setStatus] = useState('confirmado');
-  const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
-
-  async function ensureMonth(userId) {
-    const month_ref = monthDate(selectedMonth);
-    const { data: existing } = await supabase.from('monthly_periods').select('*').eq('user_id', userId).eq('month_ref', month_ref).maybeSingle();
-    if (existing) return existing.id;
-    const { data, error } = await supabase.from('monthly_periods').insert({ user_id: userId, month_ref, label: MONTHS[selectedMonth] }).select().single();
-    if (error) throw error;
-    return data.id;
-  }
-
-  async function submit(e) {
-    e.preventDefault();
-    setErr(''); setMsg('');
-    const { data: { user } } = await supabase.auth.getUser();
-    try {
-      const monthId = await ensureMonth(user.id);
-      const { error } = await supabase.from('transactions').insert({
-        user_id: user.id,
-        month_id: monthId,
-        account_id: accountId || null,
-        category_id: categoryId || null,
-        tx_date: txDate,
-        tx_type: txType,
-        description,
-        amount: Number(amount || 0),
-        status
-      });
-      if (error) return setErr(error.message);
-      setMsg('Lançamento salvo com sucesso.');
-      setDescription(''); setAmount('');
-      onCreated?.();
-    } catch (e) { setErr(e.message); }
-  }
-
-  return (
-    <div className="grid cols2">
-      <div className="card">
-        <h2 style={{ marginTop: 0 }}>Novo lançamento</h2>
-        <form onSubmit={submit} className="stack">
-          <div className="row">
-            <select value={txType} onChange={(e) => setTxType(e.target.value)}>
-              <option value="despesa">Despesa</option>
-              <option value="receita">Receita</option>
-              <option value="pagamento_cartao">Pagamento cartão</option>
-            </select>
-            <input type="date" value={txDate} onChange={(e) => setTxDate(e.target.value)} />
-          </div>
-          <div className="row">
-            <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-              <option value="">Selecione a conta</option>
-              {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
-            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-              <option value="">Selecione a categoria</option>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-          <input placeholder="Descrição" value={description} onChange={(e) => setDescription(e.target.value)} />
-          <div className="row">
-            <input placeholder="Valor" type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
-            <select value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="confirmado">Confirmado</option>
-              <option value="pendente">Pendente</option>
-            </select>
-          </div>
-          <button type="submit">Salvar lançamento</button>
-        </form>
-        {err && <div className="error">{err}</div>}
-        {msg && <div className="success">{msg}</div>}
-      </div>
-
-      <div className="card">
-        <h2 style={{ marginTop: 0 }}>Lançamentos do mês</h2>
-        {transactions.length ? (
-          <table className="table">
-            <thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th className="money">Valor</th></tr></thead>
-            <tbody>
-              {transactions.map((t) => (
-                <tr key={t.id}>
-                  <td>{t.tx_date}</td>
-                  <td>{t.description}</td>
-                  <td>{t.tx_type}</td>
-                  <td className="money">{brl(t.amount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : <div className="empty">Ainda não há lançamentos neste mês.</div>}
-      </div>
-    </div>
-  );
-}
-
-function CardsView({ cards, purchases, installments, selectedMonth, onCreated }) {
-  const [name, setName] = useState('');
-  const [limitAmount, setLimitAmount] = useState('');
-  const [closingDay, setClosingDay] = useState('10');
-  const [dueDay, setDueDay] = useState('17');
-  const [cardId, setCardId] = useState('');
-  const [purchaseDesc, setPurchaseDesc] = useState('');
-  const [purchaseAmount, setPurchaseAmount] = useState('');
-  const [purchaseDate, setPurchaseDate] = useState(`${selectedMonth}-01`);
-  const [installmentsCount, setInstallmentsCount] = useState('1');
-  const [selectedPurchase, setSelectedPurchase] = useState('');
-  const [advanceCount, setAdvanceCount] = useState('1');
-  const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
-
-  async function ensureMonth(userId, monthRef) {
-    const { data: existing } = await supabase.from('monthly_periods').select('*').eq('user_id', userId).eq('month_ref', monthRef).maybeSingle();
-    if (existing) return existing.id;
-    const label = MONTHS[monthRef.slice(0, 7)] || monthRef;
-    const { data, error } = await supabase.from('monthly_periods').insert({ user_id: userId, month_ref: monthRef, label }).select().single();
-    if (error) throw error;
-    return data.id;
-  }
-
-  async function createCard(e) {
-    e.preventDefault();
-    setErr(''); setMsg('');
-    const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from('credit_cards').insert({
-      user_id: user.id,
-      name,
-      limit_amount: Number(limitAmount || 0),
-      closing_day: Number(closingDay),
-      due_day: Number(dueDay)
-    });
-    if (error) return setErr(error.message);
-    setMsg('Cartão criado com sucesso.');
-    setName(''); setLimitAmount('');
-    onCreated?.();
-  }
-
-  async function createPurchase(e) {
-    e.preventDefault();
-    setErr(''); setMsg('');
-    const { data: { user } } = await supabase.auth.getUser();
-    const total = Number(purchaseAmount || 0);
-    const count = Number(installmentsCount || 1);
-    const installmentValue = Number((total / count).toFixed(2));
-
-    const { data: purchase, error } = await supabase.from('card_purchases').insert({
-      user_id: user.id,
-      card_id: cardId,
-      description: purchaseDesc,
-      purchase_date: purchaseDate,
-      total_amount: total,
-      installments_count: count
-    }).select().single();
-
-    if (error) return setErr(error.message);
-
-    for (let i = 1; i <= count; i++) {
-      const date = addMonths(purchaseDate, i - 1);
-      const monthRef = `${date.slice(0,7)}-01`;
-      const monthId = await ensureMonth(user.id, monthRef);
-      await supabase.from('installments').insert({
-        user_id: user.id,
-        purchase_id: purchase.id,
-        card_id: cardId,
-        month_id: monthId,
-        installment_number: i,
-        installment_amount: installmentValue,
-        installment_date: date,
-        status: 'ativa'
-      });
-    }
-
-    setMsg('Compra parcelada criada com sucesso.');
-    setCardId(''); setPurchaseDesc(''); setPurchaseAmount(''); setInstallmentsCount('1');
-    onCreated?.();
-  }
-
-  async function advanceInstallments(e) {
-    e.preventDefault();
-    setErr(''); setMsg('');
-    const { data: { user } } = await supabase.auth.getUser();
-    const count = Number(advanceCount || 1);
-
-    const { data: openInstallments, error: loadError } = await supabase
-      .from('installments')
-      .select('*')
-      .eq('purchase_id', selectedPurchase)
-      .eq('status', 'ativa')
-      .order('installment_number', { ascending: true })
-      .limit(count);
-
-    if (loadError) return setErr(loadError.message);
-    if (!openInstallments || !openInstallments.length) return setErr('Não há parcelas ativas para antecipar.');
-
-    const totalAdvance = openInstallments.reduce((s, i) => s + Number(i.installment_amount), 0);
-
-    const { error: adjError } = await supabase.from('installment_adjustments').insert({
-      user_id: user.id,
-      purchase_id: selectedPurchase,
-      adjustment_type: 'antecipacao_parcial',
-      installments_affected: openInstallments.length,
-      adjustment_amount: totalAdvance,
-      adjustment_date: new Date().toISOString().slice(0, 10),
-      notes: 'Antecipação feita pelo app'
-    });
-    if (adjError) return setErr(adjError.message);
-
-    const ids = openInstallments.map((i) => i.id);
-    const { error: updateError } = await supabase.from('installments').update({ status: 'antecipada' }).in('id', ids);
-    if (updateError) return setErr(updateError.message);
-
-    setMsg(`Antecipação registrada. Valor total: ${brl(totalAdvance)}`);
-    onCreated?.();
-  }
-
-  return (
-    <div className="grid cols2">
-      <div className="stack">
-        <div className="card">
-          <h2 style={{ marginTop: 0 }}>Novo cartão</h2>
-          <form onSubmit={createCard} className="stack">
-            <input placeholder="Nome do cartão" value={name} onChange={(e) => setName(e.target.value)} />
-            <input placeholder="Limite" type="number" step="0.01" value={limitAmount} onChange={(e) => setLimitAmount(e.target.value)} />
-            <div className="row">
-              <input placeholder="Fechamento" type="number" value={closingDay} onChange={(e) => setClosingDay(e.target.value)} />
-              <input placeholder="Vencimento" type="number" value={dueDay} onChange={(e) => setDueDay(e.target.value)} />
-            </div>
-            <button type="submit">Salvar cartão</button>
-          </form>
-        </div>
-
-        <div className="card">
-          <h2 style={{ marginTop: 0 }}>Nova compra parcelada</h2>
-          <form onSubmit={createPurchase} className="stack">
-            <select value={cardId} onChange={(e) => setCardId(e.target.value)}>
-              <option value="">Selecione o cartão</option>
-              {cards.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <input placeholder="Descrição da compra" value={purchaseDesc} onChange={(e) => setPurchaseDesc(e.target.value)} />
-            <div className="row">
-              <input placeholder="Valor total" type="number" step="0.01" value={purchaseAmount} onChange={(e) => setPurchaseAmount(e.target.value)} />
-              <input placeholder="Parcelas" type="number" min="1" value={installmentsCount} onChange={(e) => setInstallmentsCount(e.target.value)} />
-            </div>
-            <input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} />
-            <button type="submit">Criar compra parcelada</button>
-          </form>
-        </div>
-
-        <div className="card">
-          <h2 style={{ marginTop: 0 }}>Antecipar parcelas</h2>
-          <form onSubmit={advanceInstallments} className="stack">
-            <select value={selectedPurchase} onChange={(e) => setSelectedPurchase(e.target.value)}>
-              <option value="">Selecione a compra</option>
-              {purchases.map((p) => <option key={p.id} value={p.id}>{p.description}</option>)}
-            </select>
-            <input placeholder="Quantidade de parcelas" type="number" min="1" value={advanceCount} onChange={(e) => setAdvanceCount(e.target.value)} />
-            <button type="submit">Antecipar parcelas</button>
-          </form>
-        </div>
-
-        {err && <div className="error">{err}</div>}
-        {msg && <div className="success">{msg}</div>}
-      </div>
-
-      <div className="stack">
-        <div className="card">
-          <h2 style={{ marginTop: 0 }}>Cartões</h2>
-          {cards.length ? (
-            <table className="table">
-              <thead><tr><th>Cartão</th><th>Fech./Venc.</th><th className="money">Limite</th></tr></thead>
-              <tbody>
-                {cards.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.name}</td>
-                    <td>{c.closing_day}/{c.due_day}</td>
-                    <td className="money">{brl(c.limit_amount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : <div className="empty">Nenhum cartão cadastrado.</div>}
-        </div>
-
-        <div className="card">
-          <h2 style={{ marginTop: 0 }}>Parcelas</h2>
-          {installments.length ? (
-            <table className="table">
-              <thead><tr><th>Compra</th><th>Parcela</th><th>Status</th><th className="money">Valor</th></tr></thead>
-              <tbody>
-                {installments.map((i) => (
-                  <tr key={i.id}>
-                    <td>{i.card_purchases?.description || 'Compra'}</td>
-                    <td>{i.installment_number}</td>
-                    <td>{i.status}</td>
-                    <td className="money">{brl(i.installment_amount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : <div className="empty">Sem parcelas criadas ainda.</div>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AppShell({ session }) {
-  const [tab, setTab] = useState('dashboard');
-  const [selectedMonth, setSelectedMonth] = useState('2026-03');
-  const [accounts, setAccounts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [transactions, setTransactions] = useState([]);
-  const [cards, setCards] = useState([]);
-  const [purchases, setPurchases] = useState([]);
-  const [installments, setInstallments] = useState([]);
-  const [loadingData, setLoadingData] = useState(true);
-
-  async function ensureProfile() {
-    const user = session.user;
-    await supabase.from('profiles').upsert({
-      id: user.id,
-      full_name: user.user_metadata?.full_name || user.email
-    });
-  }
-
-  async function loadAll() {
-    setLoadingData(true);
-    const userId = session.user.id;
-    const { start, end } = startEndFromMonth(selectedMonth);
-
-    const [accountsRes, categoriesRes, txRes, cardsRes, purchasesRes, instRes] = await Promise.all([
-      supabase.from('accounts').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
-      supabase.from('categories').select('*').eq('user_id', userId).order('name'),
-      supabase.from('transactions').select('*').eq('user_id', userId).gte('tx_date', start).lte('tx_date', end).order('tx_date', { ascending: false }),
-      supabase.from('credit_cards').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
-      supabase.from('card_purchases').select('*').eq('user_id', userId).order('purchase_date', { ascending: false }),
-      supabase.from('installments').select('*, card_purchases(description)').eq('user_id', userId).order('installment_date', { ascending: true })
-    ]);
-
-    setAccounts(accountsRes.data || []);
-    setCategories(categoriesRes.data || []);
-    setTransactions(txRes.data || []);
-    setCards(cardsRes.data || []);
-    setPurchases(purchasesRes.data || []);
-    setInstallments(instRes.data || []);
-    setLoadingData(false);
-  }
-
-  useEffect(() => {
-    ensureProfile().then(loadAll);
-  }, [selectedMonth]);
-
-  const summary = useMemo(() => {
-    const income = transactions.filter(t => t.tx_type === 'receita').reduce((s, t) => s + Number(t.amount), 0);
-    const expenses = transactions.filter(t => t.tx_type !== 'receita').reduce((s, t) => s + Number(t.amount), 0);
-    const accountsTotal = accounts.reduce((s, a) => s + Number(a.initial_balance || 0), 0);
-
-    const txClassified = transactions.map((t) => ({ ...t, bucket: classifyTransaction(t) }));
-    const fixed = txClassified.filter(t => t.bucket === 'contas_fixas');
-    const debts = txClassified.filter(t => t.bucket === 'dividas');
-    const variable = txClassified.filter(t => t.bucket === 'gastos_variaveis');
-    const incomes = txClassified.filter(t => t.bucket === 'receitas');
-    const cardsFromTx = txClassified.filter(t => t.bucket === 'cartoes');
-    const cardsFromInstallments = installments.filter(i => i.status === 'ativa');
-
-    return {
-      income,
-      expenses,
-      net: income - expenses,
-      accountsTotal,
-      fixedTotal: fixed.reduce((s, i) => s + Number(i.amount || 0), 0),
-      fixedCount: fixed.length,
-      debtTotal: debts.reduce((s, i) => s + Number(i.amount || 0), 0),
-      debtCount: debts.length,
-      variableTotal: variable.reduce((s, i) => s + Number(i.amount || 0), 0),
-      variableCount: variable.length,
-      incomeTotal: incomes.reduce((s, i) => s + Number(i.amount || 0), 0),
-      incomeCount: incomes.length,
-      cardsTotal: cardsFromTx.reduce((s, i) => s + Number(i.amount || 0), 0) + cardsFromInstallments.reduce((s, i) => s + Number(i.installment_amount || 0), 0),
-      cardsCount: cards.length + cardsFromInstallments.length
-    };
-  }, [transactions, accounts, cards, installments]);
-
-  async function logout() {
-    await supabase.auth.signOut();
-  }
-
-  if (loadingData) return <main className="page"><div className="card">Carregando dados...</div></main>;
-
-  return (
-    <main className="page">
-      <section className="hero">
-        <div className="badge">Controle Financeiro • V3.4</div>
-        <h1 style={{ marginTop: 0 }}>Olá, {session.user.user_metadata?.full_name || session.user.email}</h1>
-        <p className="muted">Home minimalista, limpa e focada só em resumo.</p>
-      </section>
-
-      <div className="topbar">
-        <div>
-          <div className="muted">Mês principal</div>
-          <select className="monthSelect" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
-            {Object.entries(MONTHS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </div>
-        <button onClick={logout} style={{ width: 160 }}>Sair</button>
-      </div>
-
-      {tab === 'dashboard' && <DashboardView summary={summary} />}
-      {tab === 'accounts' && <AccountsView accounts={accounts} onCreated={loadAll} />}
-      {tab === 'launch' && <LaunchView accounts={accounts} categories={categories} selectedMonth={selectedMonth} transactions={transactions} onCreated={loadAll} />}
-      {tab === 'cards' && <CardsView cards={cards} purchases={purchases} installments={installments} selectedMonth={selectedMonth} onCreated={loadAll} />}
-      {tab === 'categories' && <CategoriesView categories={categories} onCreated={loadAll} />}
-
-      <div className="bottomNav">
-        <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>Início</button>
-        <button className={tab === 'accounts' ? 'active' : ''} onClick={() => setTab('accounts')}>Contas</button>
-        <button className={tab === 'launch' ? 'active' : ''} onClick={() => setTab('launch')}>Lançar</button>
-        <button className={tab === 'cards' ? 'active' : ''} onClick={() => setTab('cards')}>Cartões</button>
-        <button className={tab === 'categories' ? 'active' : ''} onClick={() => setTab('categories')}>Mais</button>
-      </div>
-    </main>
-  );
-}
-
-export default function HomePage() {
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  if (loading) return <main className="page"><div className="card">Carregando...</div></main>;
-  if (!session) return <LoginScreen />;
-  return <AppShell session={session} />;
 }
