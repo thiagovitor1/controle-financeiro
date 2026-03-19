@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 
-const money = (v) =>
-  new Intl.NumberFormat("pt-BR", {
+function moeda(v) {
+  return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
   }).format(Number(v || 0));
+}
 
 const meses = [
   "Janeiro 2026",
@@ -15,387 +16,528 @@ const meses = [
   "Abril 2026",
   "Maio 2026",
   "Junho 2026",
+  "Julho 2026",
+  "Agosto 2026",
+  "Setembro 2026",
+  "Outubro 2026",
+  "Novembro 2026",
+  "Dezembro 2026",
 ];
 
-const contasFixas = 2430.22;
-const dividas = 1984.55;
-const gastosVariaveis = 1102.17;
-const receitas = 6894.07;
-const saldoContas = 115.13;
+const dadosBase = {
+  "Março 2026": {
+    entradas: 6894.07,
+    saidas: 7104.04,
+    saldoContas: 115.13,
+    cards: {
+      fixas: { valor: 2430.22, itens: 7 },
+      dividas: { valor: 1984.55, itens: 4 },
+      cartoes: { valor: 1587.10, itens: 3 },
+      variaveis: { valor: 1102.17, itens: 12 },
+      receitas: { valor: 6894.07, itens: 5 },
+    },
+  },
+};
 
-const sampleCards = [
-  { id: 1, nome: "Nubank", limite: 5000, fechamento: 10, vencimento: 17 },
-  { id: 2, nome: "Itaú Azul", limite: 3500, fechamento: 5, vencimento: 12 },
-];
-
-const samplePurchases = [
+const cartoesMock = [
   {
     id: 1,
-    cartaoId: 1,
-    descricao: "Supermercado",
-    valor: 480,
-    parcelas: 1,
-    atual: 1,
-    antecipadas: 0,
-    data: "2026-03-08",
-    categoria: "Mercado",
-    observacao: "Compra do mês",
+    nome: "Nubank",
+    limite: 5000,
+    usado: 3280,
+    fechamento: 10,
+    vencimento: 17,
+    compras: [
+      { id: 11, descricao: "Notebook Dell", data: "12/03/2026", total: 2400, parcelas: "8 de 12", categoria: "Tecnologia" },
+      { id: 12, descricao: "Mercado", data: "18/03/2026", total: 480, parcelas: "à vista", categoria: "Alimentação" },
+      { id: 13, descricao: "Passagem", data: "20/03/2026", total: 400, parcelas: "2 de 4", categoria: "Transporte" },
+    ],
   },
   {
     id: 2,
-    cartaoId: 1,
-    descricao: "Notebook",
-    valor: 3600,
-    parcelas: 12,
-    atual: 3,
-    antecipadas: 0,
-    data: "2026-01-20",
-    categoria: "Tecnologia",
-    observacao: "Uso pessoal e trabalho",
-  },
-  {
-    id: 3,
-    cartaoId: 2,
-    descricao: "Passagem aérea",
-    valor: 1200,
-    parcelas: 6,
-    atual: 2,
-    antecipadas: 1,
-    data: "2026-02-10",
-    categoria: "Viagem",
-    observacao: "Visita familiar",
+    nome: "Itaú Azul",
+    limite: 3500,
+    usado: 920,
+    fechamento: 5,
+    vencimento: 12,
+    compras: [
+      { id: 21, descricao: "Farmácia", data: "08/03/2026", total: 220, parcelas: "à vista", categoria: "Saúde" },
+      { id: 22, descricao: "Curso online", data: "14/03/2026", total: 700, parcelas: "3 de 6", categoria: "Educação" },
+    ],
   },
 ];
 
-function cardName(cards, id) {
-  return cards.find((c) => c.id === Number(id))?.nome || "-";
+function getDados(mes) {
+  return (
+    dadosBase[mes] || {
+      entradas: 0,
+      saidas: 0,
+      saldoContas: 0,
+      cards: {
+        fixas: { valor: 0, itens: 0 },
+        dividas: { valor: 0, itens: 0 },
+        cartoes: { valor: 0, itens: 0 },
+        variaveis: { valor: 0, itens: 0 },
+        receitas: { valor: 0, itens: 0 },
+      },
+    }
+  );
 }
 
-function parcelaAtualTexto(compra) {
-  return `${compra.atual}/${compra.parcelas}`;
+function shellStyle() {
+  return {
+    minHeight: "100vh",
+    background:
+      "radial-gradient(circle at top, #18285d 0%, #09122e 38%, #050a19 100%)",
+    color: "#F2F5FF",
+    padding: "20px 16px 28px",
+    fontFamily:
+      'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  };
 }
 
-function parcelasRestantes(compra) {
-  return Math.max(compra.parcelas - compra.atual - compra.antecipadas, 0);
+function cardBase(extra = {}) {
+  return {
+    background: "rgba(12, 19, 44, 0.72)",
+    border: "1px solid rgba(120, 146, 255, 0.14)",
+    borderRadius: 20,
+    padding: "16px 16px 14px",
+    boxShadow: "0 8px 22px rgba(0,0,0,0.16)",
+    ...extra,
+  };
 }
 
-function valorParcela(compra) {
-  return compra.valor / compra.parcelas;
+function TopCard({ titulo, valor, destaque = false }) {
+  return (
+    <div
+      style={cardBase({
+        background: destaque ? "rgba(124, 92, 255, 0.16)" : "rgba(12, 19, 44, 0.78)",
+        border: destaque ? "1px solid rgba(124, 92, 255, 0.35)" : "1px solid rgba(120, 146, 255, 0.14)",
+        minHeight: 108,
+      })}
+    >
+      <div style={{ color: "rgba(222,228,255,0.78)", fontSize: 15, marginBottom: 10 }}>
+        {titulo}
+      </div>
+      <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.03em" }}>{valor}</div>
+    </div>
+  );
 }
 
-function statusCompra(compra) {
-  const restantes = parcelasRestantes(compra);
-  if (compra.parcelas === 1) return "À vista";
-  if (restantes === 0) return "Quitando";
-  return `${restantes} restantes`;
+function ResumoCard({ titulo, valor, itens }) {
+  return (
+    <div style={cardBase({ minHeight: 118 })}>
+      <div style={{ color: "rgba(226,231,255,0.86)", fontSize: 16, marginBottom: 10, fontWeight: 600 }}>
+        {titulo}
+      </div>
+      <div style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.1 }}>{valor}</div>
+      <div style={{ marginTop: 10, color: "rgba(200,208,245,0.72)", fontSize: 14 }}>
+        {itens} item(ns)
+      </div>
+    </div>
+  );
 }
 
-function resumoPorCartao(cards, purchases) {
-  return cards.map((cartao) => {
-    const compras = purchases.filter((p) => p.cartaoId === cartao.id);
-    const totalCompras = compras.reduce((s, p) => s + p.valor, 0);
-    const faturaAtual = compras.reduce((s, p) => {
-      if (p.parcelas === 1) return s + p.valor;
-      return s + valorParcela(p);
-    }, 0);
-    const usado = compras.reduce((s, p) => s + (p.parcelas === 1 ? 0 : valorParcela(p) * parcelasRestantes(p)), 0) + faturaAtual;
-    const disponivel = Math.max(cartao.limite - usado, 0);
-    return {
-      ...cartao,
-      compras,
-      totalCompras,
-      faturaAtual,
-      usado,
-      disponivel,
-    };
-  });
+function PlaceholderSection({ titulo, subtitulo }) {
+  return (
+    <section style={cardBase({ borderRadius: 24, marginTop: 16, padding: 20 })}>
+      <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>{titulo}</div>
+      <div style={{ color: "rgba(212,220,255,0.72)", fontSize: 15 }}>{subtitulo}</div>
+    </section>
+  );
+}
+
+function HomeTab({ mes, setMes }) {
+  const dados = useMemo(() => getDados(mes), [mes]);
+  const saldoMes = dados.entradas - dados.saidas;
+
+  return (
+    <>
+      <section
+        style={{
+          background: "rgba(11, 19, 45, 0.72)",
+          border: "1px solid rgba(120,146,255,0.15)",
+          borderRadius: 28,
+          padding: "18px 18px 16px",
+          boxShadow: "0 16px 38px rgba(0,0,0,0.22)",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              display: "inline-flex",
+              padding: "8px 14px",
+              borderRadius: 999,
+              background: "rgba(91, 126, 255, 0.18)",
+              color: "#DCE5FF",
+              fontWeight: 700,
+              fontSize: 14,
+              marginBottom: 12,
+            }}
+          >
+            Controle Financeiro • V3.7
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em" }}>
+            Olá, Thiago
+          </div>
+          <div style={{ marginTop: 6, color: "rgba(212,220,255,0.72)", fontSize: 15 }}>
+            Visual mais limpo e navegação mais simples.
+          </div>
+        </div>
+
+        <button
+          style={{
+            background: "transparent",
+            color: "rgba(232,236,255,0.85)",
+            border: "1px solid rgba(130,148,255,0.18)",
+            borderRadius: 16,
+            padding: "12px 18px",
+            fontWeight: 700,
+            fontSize: 15,
+            cursor: "pointer",
+          }}
+        >
+          Sair
+        </button>
+      </section>
+
+      <section
+        style={{
+          marginTop: 16,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "end",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <div style={{ color: "rgba(224,230,255,0.8)", fontSize: 15, marginBottom: 8 }}>
+            Mês principal
+          </div>
+          <select
+            value={mes}
+            onChange={(e) => setMes(e.target.value)}
+            style={{
+              background: "rgba(11, 19, 45, 0.82)",
+              color: "#F3F6FF",
+              border: "1px solid rgba(122,146,255,0.18)",
+              borderRadius: 14,
+              padding: "12px 14px",
+              minWidth: 220,
+              fontSize: 16,
+              outline: "none",
+            }}
+          >
+            {meses.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        </div>
+      </section>
+
+      <section
+        style={{
+          marginTop: 16,
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+          gap: 14,
+        }}
+      >
+        <TopCard titulo="Saldo do mês" valor={moeda(saldoMes)} destaque />
+        <TopCard titulo="Entradas" valor={moeda(dados.entradas)} />
+        <TopCard titulo="Saídas" valor={moeda(dados.saidas)} />
+        <TopCard titulo="Saldo em contas" valor={moeda(dados.saldoContas)} />
+      </section>
+
+      <section
+        style={{
+          marginTop: 14,
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: 12,
+        }}
+      >
+        <ResumoCard titulo="Contas Fixas" valor={moeda(dados.cards.fixas.valor)} itens={dados.cards.fixas.itens} />
+        <ResumoCard titulo="Dívidas" valor={moeda(dados.cards.dividas.valor)} itens={dados.cards.dividas.itens} />
+        <ResumoCard titulo="Cartões" valor={moeda(dados.cards.cartoes.valor)} itens={dados.cards.cartoes.itens} />
+        <ResumoCard titulo="Gastos Variáveis" valor={moeda(dados.cards.variaveis.valor)} itens={dados.cards.variaveis.itens} />
+        <ResumoCard titulo="Receitas" valor={moeda(dados.cards.receitas.valor)} itens={dados.cards.receitas.itens} />
+      </section>
+    </>
+  );
+}
+
+function ActionButton({ children, onClick, secondary = False }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        background: secondary ? "rgba(255,255,255,0.04)" : "linear-gradient(90deg, #6d7cff 0%, #8862ff 100%)",
+        color: "#F5F7FF",
+        border: secondary ? "1px solid rgba(128,150,255,0.16)" : "none",
+        borderRadius: 16,
+        padding: "14px 16px",
+        fontWeight: 800,
+        fontSize: 16,
+        cursor: "pointer",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function MiniTopCard({ titulo, valor }) {
+  return (
+    <div style={cardBase({ minHeight: 100 })}>
+      <div style={{ color: "rgba(215,223,255,0.72)", fontSize: 14, marginBottom: 8 }}>{titulo}</div>
+      <div style={{ fontSize: 28, fontWeight: 800 }}>{valor}</div>
+    </div>
+  );
+}
+
+function CartaoItem({ cartao, ativo, onClick }) {
+  const disponivel = cartao.limite - cartao.usado;
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        ...cardBase({
+          textAlign: "left",
+          borderColor: ativo ? "rgba(124, 92, 255, 0.35)" : "rgba(120, 146, 255, 0.14)",
+          background: ativo ? "rgba(124, 92, 255, 0.12)" : "rgba(12, 19, 44, 0.72)",
+          cursor: "pointer",
+          width: "100%",
+        }),
+      }}
+    >
+      <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 6 }}>{cartao.nome}</div>
+      <div style={{ color: "rgba(220,228,255,0.82)", fontSize: 15 }}>Fatura atual: {moeda(cartao.usado)}</div>
+      <div style={{ color: "rgba(200,208,245,0.72)", fontSize: 14, marginTop: 4 }}>
+        Disponível: {moeda(disponivel)} • Fecha dia {cartao.fechamento} • Vence dia {cartao.vencimento}
+      </div>
+    </button>
+  );
+}
+
+function CompraLinha({ compra }) {
+  return (
+    <div
+      style={{
+        padding: "14px 0",
+        borderBottom: "1px solid rgba(120,146,255,0.10)",
+        display: "grid",
+        gridTemplateColumns: "1.2fr .7fr .5fr .6fr",
+        gap: 12,
+      }}
+    >
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 16 }}>{compra.descricao}</div>
+        <div style={{ color: "rgba(200,208,245,0.72)", fontSize: 14, marginTop: 4 }}>
+          {compra.data} • {compra.categoria}
+        </div>
+      </div>
+      <div style={{ fontWeight: 700 }}>{moeda(compra.total)}</div>
+      <div style={{ color: "rgba(220,228,255,0.82)" }}>{compra.parcelas}</div>
+      <button
+        style={{
+          background: "rgba(255,255,255,0.04)",
+          color: "#F5F7FF",
+          border: "1px solid rgba(128,150,255,0.16)",
+          borderRadius: 12,
+          padding: "10px 12px",
+          fontWeight: 700,
+          cursor: "pointer",
+        }}
+      >
+        Antecipar
+      </button>
+    </div>
+  );
+}
+
+function CartoesTab() {
+  const [cartaoAtivo, setCartaoAtivo] = useState(cartoesMock[0]);
+  const totalLimite = cartoesMock.reduce((s, c) => s + c.limite, 0);
+  const totalUsado = cartoesMock.reduce((s, c) => s + c.usado, 0);
+  const totalDisponivel = totalLimite - totalUsado;
+
+  return (
+    <>
+      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 14 }}>
+        <MiniTopCard titulo="Fatura do mês" valor={moeda(totalUsado)} />
+        <MiniTopCard titulo="Limite usado" valor={moeda(totalUsado)} />
+        <MiniTopCard titulo="Limite disponível" valor={moeda(totalDisponivel)} />
+      </section>
+
+      <section style={{ marginTop: 16, display: "flex", gap: 12, flexWrap: "wrap" }}>
+        <button style={{
+          background: "linear-gradient(90deg, #6d7cff 0%, #8862ff 100%)",
+          color: "#F5F7FF",
+          border: "none",
+          borderRadius: 16,
+          padding: "14px 18px",
+          fontWeight: 800,
+          fontSize: 16,
+          cursor: "pointer",
+        }}>Novo cartão</button>
+        <button style={{
+          background: "rgba(255,255,255,0.04)",
+          color: "#F5F7FF",
+          border: "1px solid rgba(128,150,255,0.16)",
+          borderRadius: 16,
+          padding: "14px 18px",
+          fontWeight: 800,
+          fontSize: 16,
+          cursor: "pointer",
+        }}>Nova compra</button>
+      </section>
+
+      <section style={{ marginTop: 18, display: "grid", gridTemplateColumns: "320px 1fr", gap: 16 }}>
+        <div style={cardBase({ padding: 14 })}>
+          <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 12 }}>Meus cartões</div>
+          <div style={{ display: "grid", gap: 12 }}>
+            {cartoesMock.map((cartao) => (
+              <CartaoItem
+                key={cartao.id}
+                cartao={cartao}
+                ativo={cartaoAtivo.id === cartao.id}
+                onClick={() => setCartaoAtivo(cartao)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div style={cardBase({ padding: 18 })}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 16, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 800 }}>{cartaoAtivo.nome}</div>
+              <div style={{ color: "rgba(212,220,255,0.72)", fontSize: 15, marginTop: 6 }}>
+                Fecha dia {cartaoAtivo.fechamento} • Vence dia {cartaoAtivo.vencimento}
+              </div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ color: "rgba(212,220,255,0.72)", fontSize: 14 }}>Fatura atual</div>
+              <div style={{ fontSize: 28, fontWeight: 800 }}>{moeda(cartaoAtivo.usado)}</div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+            <div style={cardBase({ minHeight: 86 })}>
+              <div style={{ color: "rgba(212,220,255,0.72)", fontSize: 14, marginBottom: 8 }}>Limite total</div>
+              <div style={{ fontSize: 24, fontWeight: 800 }}>{moeda(cartaoAtivo.limite)}</div>
+            </div>
+            <div style={cardBase({ minHeight: 86 })}>
+              <div style={{ color: "rgba(212,220,255,0.72)", fontSize: 14, marginBottom: 8 }}>Usado</div>
+              <div style={{ fontSize: 24, fontWeight: 800 }}>{moeda(cartaoAtivo.usado)}</div>
+            </div>
+            <div style={cardBase({ minHeight: 86 })}>
+              <div style={{ color: "rgba(212,220,255,0.72)", fontSize: 14, marginBottom: 8 }}>Disponível</div>
+              <div style={{ fontSize: 24, fontWeight: 800 }}>{moeda(cartaoAtivo.limite - cartaoAtivo.usado)}</div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 20, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 22, fontWeight: 800 }}>Compras</div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <input
+                placeholder="Buscar compra"
+                style={{
+                  background: "rgba(9, 14, 33, 0.92)",
+                  color: "#F3F6FF",
+                  border: "1px solid rgba(122,146,255,0.18)",
+                  borderRadius: 12,
+                  padding: "10px 12px",
+                  minWidth: 180,
+                  fontSize: 15,
+                  outline: "none",
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginTop: 8 }}>
+            {cartaoAtivo.compras.map((compra) => (
+              <CompraLinha key={compra.id} compra={compra} />
+            ))}
+          </div>
+        </div>
+      </section>
+    </>
+  );
 }
 
 export default function Page() {
-  const [aba, setAba] = useState("cartoes");
-  const [mes, setMes] = useState(meses[2]);
-  const [cards, setCards] = useState(sampleCards);
-  const [purchases, setPurchases] = useState(samplePurchases);
-  const [toast, setToast] = useState("");
+  const [mes, setMes] = useState("Março 2026");
+  const [tab, setTab] = useState("cartoes");
 
-  const [novoCartao, setNovoCartao] = useState({ nome: "", limite: "", fechamento: "", vencimento: "" });
-  const [novaCompra, setNovaCompra] = useState({ cartaoId: "", descricao: "", valor: "", parcelas: "1", data: "", categoria: "", observacao: "" });
-  const [filtro, setFiltro] = useState({ cartaoId: "", descricao: "" });
-  const [antecipar, setAntecipar] = useState({ compraId: "", quantidade: "" });
-
-  const totalFatura = purchases.reduce((s, p) => s + (p.parcelas === 1 ? p.valor : valorParcela(p)), 0);
-  const totalLimite = cards.reduce((s, c) => s + c.limite, 0);
-  const totalCompras = purchases.reduce((s, p) => s + p.valor, 0);
-
-  const cardsResumo = useMemo(() => resumoPorCartao(cards, purchases), [cards, purchases]);
-
-  const comprasFiltradas = purchases.filter((p) => {
-    const matchCard = filtro.cartaoId ? p.cartaoId === Number(filtro.cartaoId) : true;
-    const matchDesc = filtro.descricao ? p.descricao.toLowerCase().includes(filtro.descricao.toLowerCase()) : true;
-    return matchCard && matchDesc;
-  });
-
-  const showToast = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(""), 2500);
+  const itemStyle = {
+    flex: 1,
+    textAlign: "center",
+    color: "rgba(231,236,255,0.9)",
+    fontWeight: 700,
+    fontSize: 16,
+    padding: "12px 8px",
+    borderRadius: 16,
+    cursor: "pointer",
+    userSelect: "none",
   };
-
-  const salvarCartao = (e) => {
-    e.preventDefault();
-    if (!novoCartao.nome || !novoCartao.limite || !novoCartao.fechamento || !novoCartao.vencimento) return;
-    setCards((prev) => [...prev, { id: Date.now(), nome: novoCartao.nome, limite: Number(novoCartao.limite), fechamento: Number(novoCartao.fechamento), vencimento: Number(novoCartao.vencimento) }]);
-    setNovoCartao({ nome: "", limite: "", fechamento: "", vencimento: "" });
-    showToast("Cartão salvo com sucesso.");
-  };
-
-  const salvarCompra = (e) => {
-    e.preventDefault();
-    if (!novaCompra.cartaoId || !novaCompra.descricao || !novaCompra.valor || !novaCompra.parcelas) return;
-    setPurchases((prev) => [...prev, { id: Date.now(), cartaoId: Number(novaCompra.cartaoId), descricao: novaCompra.descricao, valor: Number(novaCompra.valor), parcelas: Number(novaCompra.parcelas), atual: 1, antecipadas: 0, data: novaCompra.data || "2026-03-16", categoria: novaCompra.categoria || "Sem categoria", observacao: novaCompra.observacao || "" }]);
-    setNovaCompra({ cartaoId: "", descricao: "", valor: "", parcelas: "1", data: "", categoria: "", observacao: "" });
-    showToast("Compra adicionada com sucesso.");
-  };
-
-  const anteciparParcelas = (compraId, qtd) => {
-    setPurchases((prev) =>
-      prev.map((p) => {
-        if (p.id !== Number(compraId)) return p;
-        const max = parcelasRestantes(p);
-        const add = Math.min(Number(qtd), max);
-        return { ...p, antecipadas: p.antecipadas + add };
-      })
-    );
-    showToast(`${qtd} parcela(s) antecipada(s).`);
-  };
-
-  const excluirCompra = (id) => {
-    setPurchases((prev) => prev.filter((p) => p.id !== id));
-    showToast("Compra excluída.");
-  };
-
-  const nav = [
-    ["inicio", "Início"],
-    ["contas", "Contas"],
-    ["lancar", "Lançar"],
-    ["cartoes", "Cartões"],
-    ["mais", "Mais"],
-  ];
 
   return (
-    <main style={styles.bg}>
-      <div style={styles.wrap}>
-        {toast ? <div style={styles.toast}>{toast}</div> : null}
-        {aba === "cartoes" ? (
-          <>
-            <section style={styles.hero}>
-              <div style={styles.badge}>Controle Financeiro • V3.6</div>
-              <h1 style={styles.title}>Cartões</h1>
-              <p style={styles.subtitle}>Gestão real de cartões, compras, parcelamentos e antecipações.</p>
-            </section>
-
-            <div style={styles.monthRow}>
-              <div>
-                <div style={styles.label}>Mês principal</div>
-                <select value={mes} onChange={(e) => setMes(e.target.value)} style={styles.select}>
-                  {meses.map((m) => <option key={m}>{m}</option>)}
-                </select>
-              </div>
-            </div>
-
-            <section style={styles.grid4}>
-              <SummaryCard title="Fatura estimada" value={money(totalFatura)} highlight />
-              <SummaryCard title="Limite total" value={money(totalLimite)} />
-              <SummaryCard title="Total em compras" value={money(totalCompras)} />
-              <SummaryCard title="Cartões cadastrados" value={String(cards.length)} />
-            </section>
-
-            <section style={styles.grid2}>
-              <form style={styles.panel} onSubmit={salvarCartao}>
-                <h2 style={styles.h2}>Novo cartão</h2>
-                <input placeholder="Nome do cartão" style={styles.input} value={novoCartao.nome} onChange={(e) => setNovoCartao({ ...novoCartao, nome: e.target.value })} />
-                <input placeholder="Limite" type="number" style={styles.input} value={novoCartao.limite} onChange={(e) => setNovoCartao({ ...novoCartao, limite: e.target.value })} />
-                <div style={styles.grid2Mini}>
-                  <input placeholder="Fechamento" type="number" style={styles.input} value={novoCartao.fechamento} onChange={(e) => setNovoCartao({ ...novoCartao, fechamento: e.target.value })} />
-                  <input placeholder="Vencimento" type="number" style={styles.input} value={novoCartao.vencimento} onChange={(e) => setNovoCartao({ ...novoCartao, vencimento: e.target.value })} />
-                </div>
-                <button style={styles.button}>Salvar cartão</button>
-              </form>
-
-              <form style={styles.panel} onSubmit={salvarCompra}>
-                <h2 style={styles.h2}>Nova compra</h2>
-                <select style={styles.input} value={novaCompra.cartaoId} onChange={(e) => setNovaCompra({ ...novaCompra, cartaoId: e.target.value })}>
-                  <option value="">Selecione o cartão</option>
-                  {cards.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </select>
-                <input placeholder="Descrição da compra" style={styles.input} value={novaCompra.descricao} onChange={(e) => setNovaCompra({ ...novaCompra, descricao: e.target.value })} />
-                <div style={styles.grid2Mini}>
-                  <input placeholder="Valor total" type="number" style={styles.input} value={novaCompra.valor} onChange={(e) => setNovaCompra({ ...novaCompra, valor: e.target.value })} />
-                  <input placeholder="Parcelas" type="number" style={styles.input} value={novaCompra.parcelas} onChange={(e) => setNovaCompra({ ...novaCompra, parcelas: e.target.value })} />
-                </div>
-                <div style={styles.grid2Mini}>
-                  <input type="date" style={styles.input} value={novaCompra.data} onChange={(e) => setNovaCompra({ ...novaCompra, data: e.target.value })} />
-                  <input placeholder="Categoria" style={styles.input} value={novaCompra.categoria} onChange={(e) => setNovaCompra({ ...novaCompra, categoria: e.target.value })} />
-                </div>
-                <input placeholder="Observação" style={styles.input} value={novaCompra.observacao} onChange={(e) => setNovaCompra({ ...novaCompra, observacao: e.target.value })} />
-                <button style={styles.button}>Adicionar compra</button>
-              </form>
-            </section>
-
-            <section style={styles.grid2}>
-              <div style={styles.panel}>
-                <h2 style={styles.h2}>Resumo por cartão</h2>
-                <div style={{ display: "grid", gap: 14 }}>
-                  {cardsResumo.map((c) => (
-                    <div key={c.id} style={styles.itemCard}>
-                      <div style={styles.rowBetween}>
-                        <strong style={{ fontSize: 22 }}>{c.nome}</strong>
-                        <span style={styles.tag}>{c.compras.length} compra(s)</span>
-                      </div>
-                      <div style={styles.statsGrid}>
-                        <MiniStat title="Fatura atual" value={money(c.faturaAtual)} />
-                        <MiniStat title="Usado" value={money(c.usado)} />
-                        <MiniStat title="Disponível" value={money(c.disponivel)} />
-                        <MiniStat title="Limite" value={money(c.limite)} />
-                      </div>
-                      <div style={styles.meta}>Fecha dia {c.fechamento} • Vence dia {c.vencimento}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div style={styles.panel}>
-                <h2 style={styles.h2}>Antecipar parcelas</h2>
-                <select style={styles.input} value={antecipar.compraId} onChange={(e) => setAntecipar({ ...antecipar, compraId: e.target.value })}>
-                  <option value="">Selecione a compra</option>
-                  {purchases.filter((p) => p.parcelas > 1 && parcelasRestantes(p) > 0).map((p) => (
-                    <option key={p.id} value={p.id}>{p.descricao} • {cardName(cards, p.cartaoId)}</option>
-                  ))}
-                </select>
-                <input placeholder="Quantidade de parcelas" type="number" style={styles.input} value={antecipar.quantidade} onChange={(e) => setAntecipar({ ...antecipar, quantidade: e.target.value })} />
-                <button style={styles.button} onClick={() => antecipar.compraId && antecipar.quantidade && anteciparParcelas(antecipar.compraId, antecipar.quantidade)}>Antecipar</button>
-              </div>
-            </section>
-
-            <section style={styles.panel}>
-              <div style={styles.rowBetweenWrap}>
-                <h2 style={styles.h2}>Compras e parcelamentos</h2>
-                <div style={styles.filtersWrap}>
-                  <select style={styles.inputSmall} value={filtro.cartaoId} onChange={(e) => setFiltro({ ...filtro, cartaoId: e.target.value })}>
-                    <option value="">Todos os cartões</option>
-                    {cards.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                  </select>
-                  <input placeholder="Filtrar por descrição" style={styles.inputSmall} value={filtro.descricao} onChange={(e) => setFiltro({ ...filtro, descricao: e.target.value })} />
-                </div>
-              </div>
-
-              <div style={{ display: "grid", gap: 14 }}>
-                {comprasFiltradas.map((p) => (
-                  <div key={p.id} style={styles.purchaseCard}>
-                    <div style={styles.rowBetweenWrap}>
-                      <div>
-                        <div style={{ fontWeight: 800, fontSize: 22 }}>{p.descricao}</div>
-                        <div style={styles.meta}>{cardName(cards, p.cartaoId)} • {p.categoria} • {p.data}</div>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontWeight: 800, fontSize: 22 }}>{money(p.valor)}</div>
-                        <div style={styles.meta}>{statusCompra(p)}</div>
-                      </div>
-                    </div>
-                    <div style={styles.statsGrid}>
-                      <MiniStat title="Parcela atual" value={parcelaAtualTexto(p)} />
-                      <MiniStat title="Valor por parcela" value={money(valorParcela(p))} />
-                      <MiniStat title="Faltam" value={`${parcelasRestantes(p)} parcela(s)`} />
-                      <MiniStat title="Antecipadas" value={`${p.antecipadas}`} />
-                    </div>
-                    {p.observacao ? <div style={styles.note}>{p.observacao}</div> : null}
-                    <div style={styles.actions}>
-                      {p.parcelas > 1 && parcelasRestantes(p) > 0 ? (
-                        <button style={styles.buttonGhost} onClick={() => anteciparParcelas(p.id, 1)}>Antecipar 1 parcela</button>
-                      ) : null}
-                      <button style={styles.buttonDanger} onClick={() => excluirCompra(p.id)}>Excluir</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </>
-        ) : (
-          <section style={styles.hero}><h1 style={styles.title}>{nav.find((n) => n[0] === aba)?.[1]}</h1></section>
+    <main style={shellStyle()}>
+      <div style={{ maxWidth: 1180, margin: "0 auto" }}>
+        {tab === "inicio" && <HomeTab mes={mes} setMes={setMes} />}
+        {tab === "contas" && (
+          <PlaceholderSection
+            titulo="Contas"
+            subtitulo="Aqui entra a listagem e edição das contas bancárias."
+          />
+        )}
+        {tab === "lancar" && (
+          <PlaceholderSection
+            titulo="Lançar"
+            subtitulo="Aqui entra o formulário de receitas, despesas e pagamentos."
+          />
+        )}
+        {tab === "cartoes" && <CartoesTab />}
+        {tab === "mais" && (
+          <PlaceholderSection
+            titulo="Mais"
+            subtitulo="Aqui entram categorias, filtros avançados e outras opções."
+          />
         )}
 
-        <nav style={styles.bottomNav}>
-          {nav.map(([id, label]) => (
-            <button key={id} onClick={() => setAba(id)} style={{ ...styles.navBtn, ...(aba === id ? styles.navBtnActive : {}) }}>{label}</button>
-          ))}
-        </nav>
+        <div
+          style={{
+            position: "sticky",
+            bottom: 16,
+            marginTop: 24,
+            background: "rgba(8, 14, 34, 0.92)",
+            border: "1px solid rgba(122, 147, 255, 0.16)",
+            borderRadius: 24,
+            padding: 10,
+            display: "grid",
+            gridTemplateColumns: "repeat(5, 1fr)",
+            gap: 8,
+            backdropFilter: "blur(14px)",
+            boxShadow: "0 16px 34px rgba(0,0,0,0.28)",
+          }}
+        >
+          <div style={{ ...itemStyle, background: tab === "inicio" ? "rgba(124, 92, 255, 0.16)" : "transparent" }} onClick={() => setTab("inicio")}>Início</div>
+          <div style={{ ...itemStyle, background: tab === "contas" ? "rgba(124, 92, 255, 0.16)" : "transparent" }} onClick={() => setTab("contas")}>Contas</div>
+          <div style={{ ...itemStyle, background: tab === "lancar" ? "rgba(124, 92, 255, 0.16)" : "transparent" }} onClick={() => setTab("lancar")}>Lançar</div>
+          <div style={{ ...itemStyle, background: tab === "cartoes" ? "rgba(124, 92, 255, 0.16)" : "transparent" }} onClick={() => setTab("cartoes")}>Cartões</div>
+          <div style={{ ...itemStyle, background: tab === "mais" ? "rgba(124, 92, 255, 0.16)" : "transparent" }} onClick={() => setTab("mais")}>Mais</div>
+        </div>
       </div>
     </main>
   );
 }
-
-function SummaryCard({ title, value, highlight = false }) {
-  return (
-    <div style={{ ...styles.summary, ...(highlight ? styles.summaryHighlight : {}) }}>
-      <div style={styles.summaryTitle}>{title}</div>
-      <div style={styles.summaryValue}>{value}</div>
-    </div>
-  );
-}
-
-function MiniStat({ title, value }) {
-  return (
-    <div style={styles.miniStat}>
-      <div style={styles.miniTitle}>{title}</div>
-      <div style={styles.miniValue}>{value}</div>
-    </div>
-  );
-}
-
-const styles = {
-  bg: {
-    minHeight: "100vh",
-    background: "radial-gradient(circle at top, #12255f 0%, #071033 40%, #030817 100%)",
-    color: "#f5f7ff",
-    padding: 20,
-    fontFamily: "Inter, Arial, sans-serif",
-  },
-  wrap: { maxWidth: 1460, margin: "0 auto", display: "grid", gap: 18 },
-  hero: { background: "rgba(13,25,70,.72)", border: "1px solid rgba(126,145,255,.2)", borderRadius: 28, padding: 22 },
-  badge: { display: "inline-block", padding: "10px 16px", borderRadius: 999, background: "rgba(111,138,255,.18)", fontWeight: 700, marginBottom: 12 },
-  title: { fontSize: 52, lineHeight: 1, margin: 0 },
-  subtitle: { color: "#aeb8da", fontSize: 18, marginTop: 12, marginBottom: 0 },
-  monthRow: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" },
-  label: { marginBottom: 8, color: "#b9c2e6", fontWeight: 700 },
-  select: { background: "#071033", color: "#fff", border: "1px solid #304178", borderRadius: 12, padding: "12px 14px", minWidth: 220 },
-  grid4: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 16 },
-  grid2: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(360px,1fr))", gap: 16 },
-  grid2Mini: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
-  summary: { background: "rgba(9,19,58,.9)", border: "1px solid rgba(115,132,226,.24)", borderRadius: 24, padding: 22 },
-  summaryHighlight: { background: "linear-gradient(135deg, rgba(104,98,255,.35), rgba(65,30,120,.22))" },
-  summaryTitle: { color: "#c1c9ea", fontSize: 18, marginBottom: 12 },
-  summaryValue: { fontSize: 36, fontWeight: 800 },
-  panel: { background: "rgba(6,15,51,.92)", border: "1px solid rgba(108,127,219,.22)", borderRadius: 28, padding: 22, display: "grid", gap: 12 },
-  h2: { fontSize: 28, margin: 0, marginBottom: 6 },
-  input: { width: "100%", background: "#061030", color: "#fff", border: "1px solid #22356e", borderRadius: 14, padding: "14px 16px", boxSizing: "border-box" },
-  inputSmall: { background: "#061030", color: "#fff", border: "1px solid #22356e", borderRadius: 14, padding: "14px 16px", minWidth: 220 },
-  button: { background: "linear-gradient(90deg, #7a8bff, #8a5cff)", color: "#fff", border: 0, borderRadius: 16, padding: "14px 18px", fontWeight: 800, cursor: "pointer" },
-  itemCard: { background: "rgba(9,19,58,.75)", border: "1px solid rgba(115,132,226,.22)", borderRadius: 22, padding: 16 },
-  rowBetween: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 },
-  rowBetweenWrap: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" },
-  statsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 10, marginTop: 14 },
-  miniStat: { background: "rgba(19,31,79,.65)", borderRadius: 16, padding: 12, border: "1px solid rgba(115,132,226,.16)" },
-  miniTitle: { fontSize: 13, color: "#aab5da", marginBottom: 6 },
-  miniValue: { fontSize: 20, fontWeight: 800 },
-  meta: { color: "#aab5da", marginTop: 8 },
-  tag: { background: "rgba(111,138,255,.18)", color: "#dfe4ff", padding: "6px 12px", borderRadius: 999, fontSize: 13 },
-  filtersWrap: { display: "flex", gap: 12, flexWrap: "wrap" },
-  purchaseCard: { background: "rgba(9,19,58,.76)", border: "1px solid rgba(115,132,226,.22)", borderRadius: 22, padding: 16 },
-  note: { marginTop: 10, padding: 12, borderRadius: 14, background: "rgba(122,139,255,.08)", color: "#d9e1ff" },
-  actions: { display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" },
-  buttonGhost: { background: "rgba(122,139,255,.18)", color: "#fff", border: "1px solid rgba(122,139,255,.28)", borderRadius: 14, padding: "12px 16px", fontWeight: 700, cursor: "pointer" },
-  buttonDanger: { background: "rgba(180,55,84,.18)", color: "#ffd9e1", border: "1px solid rgba(180,55,84,.28)", borderRadius: 14, padding: "12px 16px", fontWeight: 700, cursor: "pointer" },
-  bottomNav: { position: "sticky", bottom: 12, display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12, background: "rgba(4,10,35,.94)", border: "1px solid rgba(116,134,229,.2)", borderRadius: 26, padding: 12 },
-  navBtn: { background: "transparent", color: "#fff", border: 0, borderRadius: 18, padding: "16px 12px", fontSize: 18, fontWeight: 700, cursor: "pointer" },
-  navBtnActive: { background: "rgba(112,103,255,.24)" },
-  toast: { position: "sticky", top: 10, zIndex: 10, justifySelf: "center", background: "#0f1a4f", border: "1px solid #4f63c8", padding: "12px 18px", borderRadius: 14 },
-};
