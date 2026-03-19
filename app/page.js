@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 function moeda(v) {
   return new Intl.NumberFormat("pt-BR", {
@@ -17,10 +17,12 @@ const cartoes = [
     usado: 3280,
     fechamento: 25,
     vencimento: 1,
+    faturas: ["Janeiro/2026", "Fevereiro/2026", "Março/2026", "Abril/2026"],
     compras: [
-      { id: 1, descricao: "Notebook Dell", categoria: "Tecnologia", data: "12/03/2026", valor: 2400, parcelas: "8 de 12" },
-      { id: 2, descricao: "Mercado", categoria: "Alimentação", data: "18/03/2026", valor: 480, parcelas: "à vista" },
-      { id: 3, descricao: "Passagem", categoria: "Transporte", data: "20/03/2026", valor: 400, parcelas: "2 de 4" },
+      { id: 1, descricao: "Notebook Dell", categoria: "Tecnologia", data: "12/03/2026", valor: 2400, parcelas: "8 de 12", fatura: "Abril/2026" },
+      { id: 2, descricao: "Mercado", categoria: "Alimentação", data: "18/03/2026", valor: 480, parcelas: "à vista", fatura: "Abril/2026" },
+      { id: 3, descricao: "Passagem", categoria: "Transporte", data: "20/02/2026", valor: 400, parcelas: "2 de 4", fatura: "Março/2026" },
+      { id: 4, descricao: "Farmácia", categoria: "Saúde", data: "22/01/2026", valor: 160, parcelas: "à vista", fatura: "Fevereiro/2026" },
     ],
   },
   {
@@ -30,9 +32,10 @@ const cartoes = [
     usado: 920,
     fechamento: 5,
     vencimento: 12,
+    faturas: ["Janeiro/2026", "Fevereiro/2026", "Março/2026"],
     compras: [
-      { id: 4, descricao: "Farmácia", categoria: "Saúde", data: "08/03/2026", valor: 220, parcelas: "à vista" },
-      { id: 5, descricao: "Curso online", categoria: "Educação", data: "14/03/2026", valor: 700, parcelas: "3 de 6" },
+      { id: 5, descricao: "Curso online", categoria: "Educação", data: "14/03/2026", valor: 700, parcelas: "3 de 6", fatura: "Março/2026" },
+      { id: 6, descricao: "Farmácia", categoria: "Saúde", data: "08/03/2026", valor: 220, parcelas: "à vista", fatura: "Março/2026" },
     ],
   },
 ];
@@ -61,12 +64,32 @@ function IconBtn({ children }) {
 
 export default function Page() {
   const [selecionado, setSelecionado] = useState(cartoes[0].id);
+  const cartao = cartoes.find((c) => c.id === Number(selecionado)) || cartoes[0];
+  const [mesFatura, setMesFatura] = useState(cartao.faturas[cartao.faturas.length - 1]);
   const [busca, setBusca] = useState("");
 
-  const cartao = cartoes.find((c) => c.id === Number(selecionado)) || cartoes[0];
-  const compras = cartao.compras.filter((c) =>
-    c.descricao.toLowerCase().includes(busca.toLowerCase())
+  const cartaoAtual = useMemo(
+    () => cartoes.find((c) => c.id === Number(selecionado)) || cartoes[0],
+    [selecionado]
   );
+
+  const faturasDisponiveis = cartaoAtual.faturas || [];
+
+  const compras = useMemo(() => {
+    return cartaoAtual.compras.filter((c) =>
+      c.fatura === mesFatura &&
+      c.descricao.toLowerCase().includes(busca.toLowerCase())
+    );
+  }, [cartaoAtual, mesFatura, busca]);
+
+  const totalFatura = compras.reduce((s, c) => s + Number(c.valor || 0), 0);
+
+  function trocarCartao(id) {
+    const novo = cartoes.find((c) => c.id === Number(id)) || cartoes[0];
+    setSelecionado(novo.id);
+    setMesFatura(novo.faturas[novo.faturas.length - 1]);
+    setBusca("");
+  }
 
   return (
     <main className="pageRoot">
@@ -212,11 +235,21 @@ export default function Page() {
           line-height: 1.1;
         }
         .sectionHeader {
-          display: flex;
-          justify-content: space-between;
+          display: grid;
+          grid-template-columns: 1fr auto auto;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
           margin-bottom: 10px;
+        }
+        .faturaSelect {
+          width: 140px;
+          background: rgba(8, 5, 24, 0.9);
+          color: #fff;
+          border: 1px solid rgba(255,255,255,0.06);
+          border-radius: 14px;
+          padding: 10px 12px;
+          font-size: 13px;
+          outline: none;
         }
         .purchaseList {
           display: grid;
@@ -260,6 +293,11 @@ export default function Page() {
           font-size: 12px;
           font-weight: 700;
         }
+        .faturaResumo {
+          margin-top: 10px;
+          font-size: 12px;
+          color: rgba(224,216,245,0.7);
+        }
         .bottomNav {
           position: sticky;
           bottom: 10px;
@@ -294,7 +332,7 @@ export default function Page() {
             <div className="title">Cartão selecionado</div>
             <IconBtn>+</IconBtn>
           </div>
-          <select className="select" value={selecionado} onChange={(e) => setSelecionado(e.target.value)}>
+          <select className="select" value={selecionado} onChange={(e) => trocarCartao(e.target.value)}>
             {cartoes.map((c) => (
               <option key={c.id} value={c.id}>{c.nome}</option>
             ))}
@@ -304,29 +342,29 @@ export default function Page() {
         <section className="card">
           <div className="heroHead">
             <div>
-              <h1 className="heroName">{cartao.nome}</h1>
-              <div className="muted">Fecha dia {cartao.fechamento} • Vence dia {cartao.vencimento}</div>
+              <h1 className="heroName">{cartaoAtual.nome}</h1>
+              <div className="muted">Fecha dia {cartaoAtual.fechamento} • Vence dia {cartaoAtual.vencimento}</div>
             </div>
             <IconBtn>✎</IconBtn>
           </div>
 
           <div className="invoiceWrap">
             <div className="invoiceLabel">Fatura atual</div>
-            <div className="invoiceValue">{moeda(cartao.usado)}</div>
+            <div className="invoiceValue">{moeda(cartaoAtual.usado)}</div>
           </div>
 
           <div className="stats">
             <div className="statBox">
               <div className="statLabel">Limite total</div>
-              <div className="statValue">{moeda(cartao.limite)}</div>
+              <div className="statValue">{moeda(cartaoAtual.limite)}</div>
             </div>
             <div className="statBox">
               <div className="statLabel">Fechamento</div>
-              <div className="statValue">{cartao.fechamento}</div>
+              <div className="statValue">{cartaoAtual.fechamento}</div>
             </div>
             <div className="statBox">
               <div className="statLabel">Vencimento</div>
-              <div className="statValue">{cartao.vencimento}</div>
+              <div className="statValue">{cartaoAtual.vencimento}</div>
             </div>
           </div>
         </section>
@@ -334,6 +372,11 @@ export default function Page() {
         <section className="card">
           <div className="sectionHeader">
             <div className="title">Compras</div>
+            <select className="faturaSelect" value={mesFatura} onChange={(e) => setMesFatura(e.target.value)}>
+              {faturasDisponiveis.map((f) => (
+                <option key={f} value={f}>{f}</option>
+              ))}
+            </select>
             <IconBtn>+</IconBtn>
           </div>
 
@@ -343,6 +386,10 @@ export default function Page() {
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
           />
+
+          <div className="faturaResumo">
+            Fatura filtrada: <strong>{mesFatura}</strong> • Total: <strong>{moeda(totalFatura)}</strong>
+          </div>
 
           <div className="purchaseList">
             {compras.map((compra) => (
