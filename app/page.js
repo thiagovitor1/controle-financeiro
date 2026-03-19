@@ -18,6 +18,9 @@ const MONTHS = {
   '2026-12': 'Dezembro 2026'
 };
 
+const FIXED_KEYWORDS = ['aluguel','condom','energia','internet','vivo','claro','faculdade','pensão','agua','água','apartamento','carro','seguro'];
+const DEBT_KEYWORDS = ['empréstimo','emprestimo','financiamento','acordo','bemol','dívida','divida'];
+
 function startEndFromMonth(monthKey) {
   const [year, month] = monthKey.split('-').map(Number);
   const start = new Date(year, month - 1, 1);
@@ -30,6 +33,17 @@ function addMonths(dateString, monthsToAdd) {
   const d = new Date(dateString + 'T12:00:00');
   d.setMonth(d.getMonth() + monthsToAdd);
   return d.toISOString().slice(0, 10);
+}
+function includesKeyword(text, keywords) {
+  const normalized = String(text || '').toLowerCase();
+  return keywords.some((k) => normalized.includes(k));
+}
+function classifyTransaction(tx) {
+  if (tx.tx_type === 'receita') return 'receitas';
+  if (tx.tx_type === 'pagamento_cartao') return 'cartoes';
+  if (includesKeyword(tx.description, DEBT_KEYWORDS)) return 'dividas';
+  if (includesKeyword(tx.description, FIXED_KEYWORDS)) return 'contas_fixas';
+  return 'gastos_variaveis';
 }
 
 function LoginScreen() {
@@ -61,9 +75,9 @@ function LoginScreen() {
   return (
     <main className="page">
       <div className="loginBox card">
-        <div className="badge">Controle Financeiro • V3.2</div>
+        <div className="badge">Controle Financeiro • V3.3</div>
         <h1 style={{ marginTop: 0 }}>{mode === 'login' ? 'Entrar' : 'Criar conta'}</h1>
-        <p className="muted">Agora o sistema já inclui cartões, compras parceladas e antecipação de parcelas.</p>
+        <p className="muted">Home reorganizada com 5 cards e filtros por mês e descrição.</p>
         <form onSubmit={handleSubmit} className="grid" style={{ marginTop: 18 }}>
           {mode === 'signup' && <input placeholder="Nome completo" value={fullName} onChange={(e) => setFullName(e.target.value)} />}
           <input placeholder="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -80,16 +94,135 @@ function LoginScreen() {
   );
 }
 
-function DashboardView({ summary, accounts, cards, installments }) {
+function SummaryCard({ title, total, count, active, onClick }) {
+  return (
+    <button type="button" onClick={onClick} className="card" style={{ textAlign: 'left', borderColor: active ? '#4f86ff' : undefined, background: active ? 'rgba(27,40,68,.98)' : undefined }}>
+      <div className="muted">{title}</div>
+      <div className="kpiValue">{brl(total)}</div>
+      <div className="small muted" style={{ marginTop: 6 }}>{count} item(ns)</div>
+    </button>
+  );
+}
+
+function DetailPanel({ title, items, filterMonth, setFilterMonth, filterText, setFilterText, totalLabel }) {
+  return (
+    <div className="card" style={{ marginTop: 18 }}>
+      <div className="row" style={{ alignItems: 'end', marginBottom: 16 }}>
+        <div>
+          <h2 style={{ margin: 0 }}>{title}</h2>
+          <div className="muted small" style={{ marginTop: 6 }}>{totalLabel}</div>
+        </div>
+        <div className="row">
+          <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
+            {Object.entries(MONTHS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select>
+          <input placeholder="Filtrar por descrição" value={filterText} onChange={(e) => setFilterText(e.target.value)} />
+        </div>
+      </div>
+
+      {items.length ? (
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Descrição</th>
+              <th>Data</th>
+              <th>Tipo</th>
+              <th className="money">Valor</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item) => (
+              <tr key={`${item.source}-${item.id}`}>
+                <td>{item.description}</td>
+                <td>{item.date}</td>
+                <td>{item.kindLabel}</td>
+                <td className="money">{brl(item.amount)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : <div className="empty">Nenhum item encontrado com os filtros atuais.</div>}
+    </div>
+  );
+}
+
+function DashboardView({ summary, accounts, cards, transactionsByMonth, installmentsByMonth, selectedCard, setSelectedCard, detailMonth, setDetailMonth, detailText, setDetailText }) {
+  const baseItems = useMemo(() => {
+    const txItems = (transactionsByMonth || []).map((tx) => ({
+      id: tx.id,
+      source: 'tx',
+      bucket: classifyTransaction(tx),
+      description: tx.description,
+      date: tx.tx_date,
+      amount: Number(tx.amount || 0),
+      kindLabel: tx.tx_type
+    }));
+
+    const cardItems = (cards || []).map((card) => ({
+      id: card.id,
+      source: 'card',
+      bucket: 'cartoes',
+      description: card.name,
+      date: `fecha ${card.closing_day} / vence ${card.due_day}`,
+      amount: Number(card.limit_amount || 0),
+      kindLabel: 'cartão'
+    }));
+
+    const installmentItems = (installmentsByMonth || []).map((inst) => ({
+      id: inst.id,
+      source: 'inst',
+      bucket: 'cartoes',
+      description: inst.card_purchases?.description || 'Compra parcelada',
+      date: inst.installment_date,
+      amount: Number(inst.installment_amount || 0),
+      kindLabel: inst.status
+    }));
+
+    return [...txItems, ...cardItems, ...installmentItems];
+  }, [transactionsByMonth, installmentsByMonth, cards]);
+
+  const filteredItems = useMemo(() => {
+    return baseItems.filter((item) => {
+      const matchesCard = item.bucket === selectedCard;
+      const matchesText = !detailText || item.description.toLowerCase().includes(detailText.toLowerCase());
+      return matchesCard && matchesText;
+    });
+  }, [baseItems, selectedCard, detailText]);
+
+  const totalSelected = filteredItems.reduce((s, i) => s + Number(i.amount || 0), 0);
+
   return (
     <>
       <section className="grid kpis">
+        <div className="card"><div className="muted">Saldo do mês</div><div className="kpiValue">{brl(summary.net)}</div></div>
         <div className="card"><div className="muted">Entradas</div><div className="kpiValue">{brl(summary.income)}</div></div>
         <div className="card"><div className="muted">Saídas</div><div className="kpiValue">{brl(summary.expenses)}</div></div>
-        <div className="card"><div className="muted">Saldo do mês</div><div className="kpiValue">{brl(summary.net)}</div></div>
         <div className="card"><div className="muted">Saldo em contas</div><div className="kpiValue">{brl(summary.accountsTotal)}</div></div>
-        <div className="card"><div className="muted">Cartões</div><div className="kpiValue">{cards.length}</div></div>
       </section>
+
+      <section className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginTop: 18 }}>
+        <SummaryCard title="Contas Fixas" total={summary.fixedTotal} count={summary.fixedCount} active={selectedCard === 'contas_fixas'} onClick={() => setSelectedCard('contas_fixas')} />
+        <SummaryCard title="Dívidas" total={summary.debtTotal} count={summary.debtCount} active={selectedCard === 'dividas'} onClick={() => setSelectedCard('dividas')} />
+        <SummaryCard title="Cartões" total={summary.cardsTotal} count={summary.cardsCount} active={selectedCard === 'cartoes'} onClick={() => setSelectedCard('cartoes')} />
+        <SummaryCard title="Gastos Variáveis" total={summary.variableTotal} count={summary.variableCount} active={selectedCard === 'gastos_variaveis'} onClick={() => setSelectedCard('gastos_variaveis')} />
+        <SummaryCard title="Receitas" total={summary.incomeTotal} count={summary.incomeCount} active={selectedCard === 'receitas'} onClick={() => setSelectedCard('receitas')} />
+      </section>
+
+      <DetailPanel
+        title={
+          selectedCard === 'contas_fixas' ? 'Contas Fixas' :
+          selectedCard === 'dividas' ? 'Dívidas' :
+          selectedCard === 'cartoes' ? 'Cartões' :
+          selectedCard === 'gastos_variaveis' ? 'Gastos Variáveis' :
+          'Receitas'
+        }
+        items={filteredItems}
+        filterMonth={detailMonth}
+        setFilterMonth={setDetailMonth}
+        filterText={detailText}
+        setFilterText={setDetailText}
+        totalLabel={`Total filtrado: ${brl(totalSelected)}`}
+      />
 
       <section className="grid cols2" style={{ marginTop: 18 }}>
         <div className="card">
@@ -106,21 +239,21 @@ function DashboardView({ summary, accounts, cards, installments }) {
         </div>
 
         <div className="card">
-          <h2 style={{ marginTop: 0 }}>Parcelas ativas</h2>
-          {installments.length ? (
+          <h2 style={{ marginTop: 0 }}>Cartões cadastrados</h2>
+          {cards.length ? (
             <table className="table">
-              <thead><tr><th>Compra</th><th>Parcela</th><th className="money">Valor</th></tr></thead>
+              <thead><tr><th>Cartão</th><th>Fech./Venc.</th><th className="money">Limite</th></tr></thead>
               <tbody>
-                {installments.slice(0, 6).map((item) => (
-                  <tr key={item.id}>
-                    <td>{item.card_purchases?.description || 'Compra'}</td>
-                    <td>{item.installment_number}</td>
-                    <td className="money">{brl(item.installment_amount)}</td>
+                {cards.map((c) => (
+                  <tr key={c.id}>
+                    <td>{c.name}</td>
+                    <td>{c.closing_day}/{c.due_day}</td>
+                    <td className="money">{brl(c.limit_amount)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          ) : <div className="empty">Sem parcelas ativas.</div>}
+          ) : <div className="empty">Nenhum cartão cadastrado.</div>}
         </div>
       </section>
     </>
@@ -564,12 +697,17 @@ function CardsView({ cards, purchases, installments, selectedMonth, onCreated })
 function AppShell({ session }) {
   const [tab, setTab] = useState('dashboard');
   const [selectedMonth, setSelectedMonth] = useState('2026-03');
+  const [detailMonth, setDetailMonth] = useState('2026-03');
+  const [detailText, setDetailText] = useState('');
+  const [selectedCard, setSelectedCard] = useState('contas_fixas');
   const [accounts, setAccounts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [cards, setCards] = useState([]);
   const [purchases, setPurchases] = useState([]);
   const [installments, setInstallments] = useState([]);
+  const [transactionsByDetailMonth, setTransactionsByDetailMonth] = useState([]);
+  const [installmentsByDetailMonth, setInstallmentsByDetailMonth] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
 
   async function ensureProfile() {
@@ -584,14 +722,17 @@ function AppShell({ session }) {
     setLoadingData(true);
     const userId = session.user.id;
     const { start, end } = startEndFromMonth(selectedMonth);
+    const detailRange = startEndFromMonth(detailMonth);
 
-    const [accountsRes, categoriesRes, txRes, cardsRes, purchasesRes, instRes] = await Promise.all([
+    const [accountsRes, categoriesRes, txRes, cardsRes, purchasesRes, instRes, detailTxRes, detailInstRes] = await Promise.all([
       supabase.from('accounts').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
       supabase.from('categories').select('*').eq('user_id', userId).order('name'),
       supabase.from('transactions').select('*').eq('user_id', userId).gte('tx_date', start).lte('tx_date', end).order('tx_date', { ascending: false }),
       supabase.from('credit_cards').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
       supabase.from('card_purchases').select('*').eq('user_id', userId).order('purchase_date', { ascending: false }),
-      supabase.from('installments').select('*, card_purchases(description)').eq('user_id', userId).order('installment_date', { ascending: true })
+      supabase.from('installments').select('*, card_purchases(description)').eq('user_id', userId).order('installment_date', { ascending: true }),
+      supabase.from('transactions').select('*').eq('user_id', userId).gte('tx_date', detailRange.start).lte('tx_date', detailRange.end).order('tx_date', { ascending: false }),
+      supabase.from('installments').select('*, card_purchases(description)').eq('user_id', userId).gte('installment_date', detailRange.start).lte('installment_date', detailRange.end).order('installment_date', { ascending: true })
     ]);
 
     setAccounts(accountsRes.data || []);
@@ -600,19 +741,45 @@ function AppShell({ session }) {
     setCards(cardsRes.data || []);
     setPurchases(purchasesRes.data || []);
     setInstallments(instRes.data || []);
+    setTransactionsByDetailMonth(detailTxRes.data || []);
+    setInstallmentsByDetailMonth(detailInstRes.data || []);
     setLoadingData(false);
   }
 
   useEffect(() => {
     ensureProfile().then(loadAll);
-  }, [selectedMonth]);
+  }, [selectedMonth, detailMonth]);
 
   const summary = useMemo(() => {
     const income = transactions.filter(t => t.tx_type === 'receita').reduce((s, t) => s + Number(t.amount), 0);
     const expenses = transactions.filter(t => t.tx_type !== 'receita').reduce((s, t) => s + Number(t.amount), 0);
     const accountsTotal = accounts.reduce((s, a) => s + Number(a.initial_balance || 0), 0);
-    return { income, expenses, net: income - expenses, accountsTotal };
-  }, [transactions, accounts]);
+
+    const txClassified = transactions.map((t) => ({ ...t, bucket: classifyTransaction(t) }));
+    const fixed = txClassified.filter(t => t.bucket === 'contas_fixas');
+    const debts = txClassified.filter(t => t.bucket === 'dividas');
+    const variable = txClassified.filter(t => t.bucket === 'gastos_variaveis');
+    const incomes = txClassified.filter(t => t.bucket === 'receitas');
+    const cardsFromTx = txClassified.filter(t => t.bucket === 'cartoes');
+    const cardsFromInstallments = installments.filter(i => i.status === 'ativa');
+
+    return {
+      income,
+      expenses,
+      net: income - expenses,
+      accountsTotal,
+      fixedTotal: fixed.reduce((s, i) => s + Number(i.amount || 0), 0),
+      fixedCount: fixed.length,
+      debtTotal: debts.reduce((s, i) => s + Number(i.amount || 0), 0),
+      debtCount: debts.length,
+      variableTotal: variable.reduce((s, i) => s + Number(i.amount || 0), 0),
+      variableCount: variable.length,
+      incomeTotal: incomes.reduce((s, i) => s + Number(i.amount || 0), 0),
+      incomeCount: incomes.length,
+      cardsTotal: cardsFromTx.reduce((s, i) => s + Number(i.amount || 0), 0) + cardsFromInstallments.reduce((s, i) => s + Number(i.installment_amount || 0), 0),
+      cardsCount: cards.length + cardsFromInstallments.length
+    };
+  }, [transactions, accounts, cards, installments]);
 
   async function logout() {
     await supabase.auth.signOut();
@@ -623,14 +790,14 @@ function AppShell({ session }) {
   return (
     <main className="page">
       <section className="hero">
-        <div className="badge">Controle Financeiro • V3.2</div>
+        <div className="badge">Controle Financeiro • V3.3</div>
         <h1 style={{ marginTop: 0 }}>Olá, {session.user.user_metadata?.full_name || session.user.email}</h1>
-        <p className="muted">Agora o sistema já tem cartões, compras parceladas e antecipação de parcelas.</p>
+        <p className="muted">Início reorganizado com 5 cards: Contas Fixas, Dívidas, Cartões, Gastos Variáveis e Receitas.</p>
       </section>
 
       <div className="topbar">
         <div>
-          <div className="muted">Mês selecionado</div>
+          <div className="muted">Mês principal</div>
           <select className="monthSelect" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
             {Object.entries(MONTHS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
@@ -638,7 +805,22 @@ function AppShell({ session }) {
         <button onClick={logout} style={{ width: 160 }}>Sair</button>
       </div>
 
-      {tab === 'dashboard' && <DashboardView summary={summary} accounts={accounts} cards={cards} installments={installments.filter(i => i.status === 'ativa')} />}
+      {tab === 'dashboard' && (
+        <DashboardView
+          summary={summary}
+          accounts={accounts}
+          cards={cards}
+          transactionsByMonth={transactionsByDetailMonth}
+          installmentsByMonth={installmentsByDetailMonth}
+          selectedCard={selectedCard}
+          setSelectedCard={setSelectedCard}
+          detailMonth={detailMonth}
+          setDetailMonth={setDetailMonth}
+          detailText={detailText}
+          setDetailText={setDetailText}
+        />
+      )}
+
       {tab === 'accounts' && <AccountsView accounts={accounts} onCreated={loadAll} />}
       {tab === 'launch' && <LaunchView accounts={accounts} categories={categories} selectedMonth={selectedMonth} transactions={transactions} onCreated={loadAll} />}
       {tab === 'cards' && <CardsView cards={cards} purchases={purchases} installments={installments} selectedMonth={selectedMonth} onCreated={loadAll} />}
