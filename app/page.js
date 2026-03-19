@@ -111,9 +111,9 @@ function HomeTab({ mes, setMes }) {
     <>
       <section className="hero card">
         <div>
-          <div className="pill">Controle Financeiro • V3.7.3</div>
+          <div className="pill">Controle Financeiro • V3.7.4</div>
           <h1>Olá, Thiago</h1>
-          <p className="muted">Agora com visual ajustado para iPhone e mobile-first.</p>
+          <p className="muted">Cartões com seleção por dropdown no topo.</p>
         </div>
         <button className="ghostButton">Sair</button>
       </section>
@@ -145,19 +145,6 @@ function HomeTab({ mes, setMes }) {
   );
 }
 
-function CartaoItem({ cartao, ativo, onClick }) {
-  const disponivel = cartao.limite - cartao.usado;
-  return (
-    <button onClick={onClick} className={`card cardButton ${ativo ? "activeCard" : ""}`}>
-      <div className="cardItemTitle">{cartao.nome}</div>
-      <div className="small">Fatura: {moeda(cartao.usado)}</div>
-      <div className="small muted" style={{ marginTop: 4 }}>
-        Disponível: {moeda(disponivel)} • Fecha {cartao.fechamento} • Vence {cartao.vencimento}
-      </div>
-    </button>
-  );
-}
-
 function PurchaseRow({ compra }) {
   return (
     <div className="purchaseCard">
@@ -186,15 +173,12 @@ function CartoesTab() {
   const [fechamentoEdit, setFechamentoEdit] = useState(cartaoAtivo.fechamento);
   const [vencimentoEdit, setVencimentoEdit] = useState(cartaoAtivo.vencimento);
 
-  const totalLimite = cartoes.reduce((s, c) => s + c.limite, 0);
-  const totalUsado = cartoes.reduce((s, c) => s + c.usado, 0);
-  const totalDisponivel = totalLimite - totalUsado;
-
   const comprasFiltradas = cartaoAtivo.compras.filter((compra) =>
     compra.descricao.toLowerCase().includes(busca.toLowerCase())
   );
 
-  function selecionarCartao(cartao) {
+  function selecionarCartao(cartaoId) {
+    const cartao = cartoes.find((c) => c.id === Number(cartaoId)) || cartoes[0];
     setCartaoAtivoId(cartao.id);
     setEditando(false);
     setMensagem("");
@@ -232,10 +216,15 @@ function CartoesTab() {
 
   return (
     <>
-      <section className="statsGrid">
-        <TopStat titulo="Fatura do mês" valor={moeda(totalUsado)} />
-        <TopStat titulo="Limite total" valor={moeda(totalLimite)} />
-        <TopStat titulo="Disponível" valor={moeda(totalDisponivel)} destaque />
+      <section className="card cardsTopSelect">
+        <div className="small muted" style={{ marginBottom: 8 }}>Cartão selecionado</div>
+        <select className="input" value={ativoAtualizado.id} onChange={(e) => selecionarCartao(e.target.value)}>
+          {cartoes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nome}
+            </option>
+          ))}
+        </select>
       </section>
 
       <section className="actionRow">
@@ -243,89 +232,73 @@ function CartoesTab() {
         <button className="secondaryButton">Nova compra</button>
       </section>
 
-      <section className="cardsLayout">
-        <aside className="card listCard">
-          <div className="sectionTitle">Meus cartões</div>
-          <div className="stack">
-            {cartoes.map((cartao) => (
-              <CartaoItem
-                key={cartao.id}
-                cartao={cartao}
-                ativo={ativoAtualizado.id === cartao.id}
-                onClick={() => selecionarCartao(cartao)}
-              />
-            ))}
+      <section className="card detailCard onlyDetail">
+        <div className="detailHeader">
+          <div>
+            <h2>{ativoAtualizado.nome}</h2>
+            <div className="muted">Fecha dia {ativoAtualizado.fechamento} • Vence dia {ativoAtualizado.vencimento}</div>
           </div>
-        </aside>
-
-        <section className="card detailCard">
-          <div className="detailHeader">
-            <div>
-              <h2>{ativoAtualizado.nome}</h2>
-              <div className="muted">Fecha dia {ativoAtualizado.fechamento} • Vence dia {ativoAtualizado.vencimento}</div>
-            </div>
-            <div className="detailInvoice">
-              <div className="small muted">Fatura atual</div>
-              <div className="detailValue">{moeda(ativoAtualizado.usado)}</div>
-            </div>
+          <div className="detailInvoice">
+            <div className="small muted">Fatura atual</div>
+            <div className="detailValue">{moeda(ativoAtualizado.usado)}</div>
           </div>
+        </div>
 
-          <div className="editActions">
+        <div className="editActions">
+          {!editando ? (
+            <button className="secondaryButton smallButton" onClick={iniciarEdicao}>Editar cartão</button>
+          ) : (
+            <>
+              <button className="primaryButton smallButton" onClick={salvarEdicao}>Salvar</button>
+              <button className="secondaryButton smallButton" onClick={() => setEditando(false)}>Cancelar</button>
+            </>
+          )}
+        </div>
+
+        {mensagem && <div className="messageBox">{mensagem}</div>}
+
+        <div className="miniStats">
+          <div className="card miniStat">
+            <div className="small muted">Limite total</div>
             {!editando ? (
-              <button className="secondaryButton smallButton" onClick={iniciarEdicao}>Editar cartão</button>
+              <div className="miniStatValue">{moeda(ativoAtualizado.limite)}</div>
             ) : (
-              <>
-                <button className="primaryButton smallButton" onClick={salvarEdicao}>Salvar</button>
-                <button className="secondaryButton smallButton" onClick={() => setEditando(false)}>Cancelar</button>
-              </>
+              <input className="input compact" value={limiteEdit} onChange={(e) => setLimiteEdit(e.target.value)} />
             )}
           </div>
-
-          {mensagem && <div className="messageBox">{mensagem}</div>}
-
-          <div className="miniStats">
-            <div className="card miniStat">
-              <div className="small muted">Limite total</div>
-              {!editando ? (
-                <div className="miniStatValue">{moeda(ativoAtualizado.limite)}</div>
-              ) : (
-                <input className="input compact" value={limiteEdit} onChange={(e) => setLimiteEdit(e.target.value)} />
-              )}
-            </div>
-            <div className="card miniStat">
-              <div className="small muted">Fechamento</div>
-              {!editando ? (
-                <div className="miniStatValue">{ativoAtualizado.fechamento}</div>
-              ) : (
-                <input className="input compact" value={fechamentoEdit} onChange={(e) => setFechamentoEdit(e.target.value)} />
-              )}
-            </div>
-            <div className="card miniStat">
-              <div className="small muted">Vencimento</div>
-              {!editando ? (
-                <div className="miniStatValue">{ativoAtualizado.vencimento}</div>
-              ) : (
-                <input className="input compact" value={vencimentoEdit} onChange={(e) => setVencimentoEdit(e.target.value)} />
-              )}
-            </div>
+          <div className="card miniStat">
+            <div className="small muted">Fechamento</div>
+            {!editando ? (
+              <div className="miniStatValue">{ativoAtualizado.fechamento}</div>
+            ) : (
+              <input className="input compact" value={fechamentoEdit} onChange={(e) => setFechamentoEdit(e.target.value)} />
+            )}
           </div>
-
-          <div className="purchaseHeader">
-            <div className="sectionTitle" style={{ marginBottom: 0 }}>Compras</div>
-            <input
-              className="input compact searchInput"
-              placeholder="Buscar compra"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-            />
+          <div className="card miniStat">
+            <div className="small muted">Vencimento</div>
+            {!editando ? (
+              <div className="miniStatValue">{ativoAtualizado.vencimento}</div>
+            ) : (
+              <input className="input compact" value={vencimentoEdit} onChange={(e) => setVencimentoEdit(e.target.value)} />
+            )}
           </div>
+        </div>
 
-          <div className="stack">
-            {comprasFiltradas.map((compra) => (
-              <PurchaseRow key={compra.id} compra={compra} />
-            ))}
-          </div>
-        </section>
+        <div className="purchaseHeader">
+          <div className="sectionTitle" style={{ marginBottom: 0 }}>Compras</div>
+          <input
+            className="input compact searchInput"
+            placeholder="Buscar compra"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
+        </div>
+
+        <div className="stack">
+          {comprasFiltradas.map((compra) => (
+            <PurchaseRow key={compra.id} compra={compra} />
+          ))}
+        </div>
       </section>
     </>
   );
@@ -356,19 +329,13 @@ export default function Page() {
           font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
           overflow-x: hidden;
         }
-        .pageRoot {
-          min-height: 100vh;
-          padding: 18px 14px 28px;
-        }
-        .container {
-          max-width: 1180px;
-          margin: 0 auto;
-        }
+        .pageRoot { min-height: 100vh; padding: 12px 12px 24px; }
+        .container { max-width: 1180px; margin: 0 auto; }
         .card {
           background: rgba(12, 19, 44, 0.72);
           border: 1px solid rgba(120, 146, 255, 0.14);
           border-radius: 20px;
-          padding: 16px;
+          padding: 14px;
           box-shadow: 0 8px 22px rgba(0,0,0,0.16);
           min-width: 0;
         }
@@ -378,7 +345,7 @@ export default function Page() {
           align-items: center;
           gap: 14px;
           flex-wrap: wrap;
-          border-radius: 24px;
+          border-radius: 20px;
         }
         .pill {
           display: inline-flex;
@@ -390,12 +357,9 @@ export default function Page() {
           font-size: 14px;
           margin-bottom: 10px;
         }
-        h1, h2 {
-          margin: 0;
-          letter-spacing: -0.03em;
-        }
-        h1 { font-size: 28px; font-weight: 800; }
-        h2 { font-size: 24px; font-weight: 800; }
+        h1, h2 { margin: 0; letter-spacing: -0.03em; }
+        h1 { font-size: 22px; font-weight: 800; }
+        h2 { font-size: 20px; font-weight: 800; }
         .muted { color: rgba(212,220,255,0.72); }
         .small { font-size: 14px; }
         .input {
@@ -409,57 +373,33 @@ export default function Page() {
           outline: none;
         }
         .compact { padding: 10px 12px; }
-        .toolbar {
-          margin-top: 14px;
-          display: flex;
-          justify-content: space-between;
-          align-items: end;
-          gap: 16px;
-          flex-wrap: wrap;
-        }
+        .toolbar, .cardsTopSelect { margin-top: 14px; }
         .statsGrid {
           margin-top: 14px;
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: 1fr;
           gap: 12px;
         }
         .stat.highlight {
           background: rgba(124, 92, 255, 0.16);
           border-color: rgba(124, 92, 255, 0.35);
         }
-        .label {
-          color: rgba(222,228,255,0.78);
-          font-size: 14px;
-          margin-bottom: 8px;
-        }
-        .bigValue {
-          font-size: 24px;
-          font-weight: 800;
-          letter-spacing: -0.03em;
-          line-height: 1.1;
-        }
+        .label { color: rgba(222,228,255,0.78); font-size: 14px; margin-bottom: 8px; }
+        .bigValue { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
         .summaryGrid {
           margin-top: 12px;
           display: grid;
-          grid-template-columns: repeat(5, minmax(0, 1fr));
+          grid-template-columns: 1fr;
           gap: 10px;
         }
-        .summaryCard {
-          min-height: 110px;
-          padding: 14px;
-        }
+        .summaryCard { min-height: 100px; padding: 14px; }
         .summaryTitle {
           color: rgba(226,231,255,0.86);
           font-size: 15px;
           margin-bottom: 8px;
           font-weight: 600;
         }
-        .summaryValue {
-          font-size: 22px;
-          font-weight: 800;
-          line-height: 1.1;
-          margin-bottom: 8px;
-        }
+        .summaryValue { font-size: 18px; font-weight: 800; line-height: 1.1; margin-bottom: 8px; }
         .ghostButton, .secondaryButton, .miniButton {
           background: rgba(255,255,255,0.04);
           color: #f5f7ff;
@@ -480,46 +420,15 @@ export default function Page() {
           font-size: 15px;
           cursor: pointer;
         }
-        .smallButton {
-          padding: 10px 14px;
-          font-size: 14px;
-        }
+        .smallButton { padding: 10px 14px; font-size: 14px; }
         .actionRow {
           margin-top: 14px;
           display: flex;
           gap: 10px;
           flex-wrap: wrap;
         }
-        .cardsLayout {
-          margin-top: 16px;
-          display: grid;
-          grid-template-columns: 300px minmax(0, 1fr);
-          gap: 14px;
-          align-items: start;
-        }
-        .listCard, .detailCard {
-          min-width: 0;
-        }
-        .stack {
-          display: grid;
-          gap: 10px;
-        }
-        .cardButton {
-          text-align: left;
-          width: 100%;
-          cursor: pointer;
-          min-width: 0;
-        }
-        .activeCard {
-          border-color: rgba(124, 92, 255, 0.35);
-          background: rgba(124, 92, 255, 0.12);
-          box-shadow: 0 0 0 1px rgba(124, 92, 255, 0.16), 0 12px 26px rgba(48, 32, 120, 0.22);
-        }
-        .cardItemTitle {
-          font-size: 18px;
-          font-weight: 800;
-          margin-bottom: 6px;
-        }
+        .actionRow > button { width: 100%; }
+        .onlyDetail { margin-top: 16px; }
         .detailHeader {
           display: flex;
           justify-content: space-between;
@@ -527,21 +436,9 @@ export default function Page() {
           gap: 14px;
           flex-wrap: wrap;
         }
-        .detailInvoice {
-          text-align: right;
-        }
-        .detailValue {
-          font-size: 30px;
-          font-weight: 800;
-          letter-spacing: -0.03em;
-          line-height: 1.1;
-        }
-        .editActions {
-          margin-top: 14px;
-          display: flex;
-          gap: 8px;
-          flex-wrap: wrap;
-        }
+        .detailInvoice { text-align: left; }
+        .detailValue { font-size: 24px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+        .editActions { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
         .messageBox {
           margin-top: 12px;
           padding: 10px 12px;
@@ -555,72 +452,41 @@ export default function Page() {
         .miniStats {
           margin-top: 16px;
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: 1fr;
           gap: 10px;
         }
-        .miniStat {
-          min-height: 86px;
-        }
-        .miniStatValue {
-          font-size: 24px;
-          font-weight: 800;
-          margin-top: 8px;
-          line-height: 1.1;
-        }
+        .miniStat { min-height: 86px; }
+        .miniStatValue { font-size: 24px; font-weight: 800; margin-top: 8px; line-height: 1.1; }
         .purchaseHeader {
           margin-top: 18px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
+          display: grid;
           gap: 10px;
-          flex-wrap: wrap;
         }
-        .sectionTitle {
-          font-size: 22px;
-          font-weight: 800;
-          margin-bottom: 8px;
-        }
-        .searchInput {
-          width: 220px;
-        }
+        .sectionTitle { font-size: 18px; font-weight: 800; margin-bottom: 0; }
+        .searchInput { width: 100%; }
         .purchaseCard {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) auto auto;
-          gap: 12px;
+          grid-template-columns: 1fr;
+          gap: 8px;
           align-items: center;
           padding: 14px 0;
           border-bottom: 1px solid rgba(120,146,255,0.10);
         }
-        .purchaseTitle {
-          font-size: 16px;
-          font-weight: 700;
-          margin-bottom: 4px;
-        }
-        .purchaseMeta {
-          text-align: right;
-          white-space: nowrap;
-        }
-        .purchaseValue {
-          font-size: 16px;
-          font-weight: 800;
-          margin-bottom: 4px;
-        }
-        .miniButton {
-          padding: 10px 12px;
-          font-size: 14px;
-          white-space: nowrap;
-        }
+        .purchaseTitle { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+        .purchaseMeta { text-align: left; }
+        .purchaseValue { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+        .miniButton { padding: 10px 12px; font-size: 14px; width: 100%; }
         .bottomNav {
           position: sticky;
           bottom: 16px;
           margin-top: 24px;
           background: rgba(8, 14, 34, 0.92);
           border: 1px solid rgba(122, 147, 255, 0.16);
-          border-radius: 24px;
-          padding: 10px;
+          border-radius: 20px;
+          padding: 8px;
           display: grid;
           grid-template-columns: repeat(5, 1fr);
-          gap: 8px;
+          gap: 4px;
           backdrop-filter: blur(14px);
           box-shadow: 0 16px 34px rgba(0,0,0,0.28);
         }
@@ -628,94 +494,39 @@ export default function Page() {
           text-align: center;
           color: rgba(231,236,255,0.9);
           font-weight: 700;
-          font-size: 16px;
-          padding: 12px 8px;
-          border-radius: 16px;
+          font-size: 12px;
+          padding: 10px 4px;
+          border-radius: 14px;
           cursor: pointer;
           user-select: none;
         }
-        .navItem.active {
-          background: rgba(124, 92, 255, 0.16);
-        }
+        .navItem.active { background: rgba(124, 92, 255, 0.16); }
 
-        @media (max-width: 900px) {
-          .statsGrid {
-            grid-template-columns: 1fr;
+        @media (min-width: 768px) {
+          .pageRoot { padding: 18px 14px 28px; }
+          h1 { font-size: 26px; }
+          h2 { font-size: 24px; }
+          .statsGrid { grid-template-columns: repeat(3, 1fr); }
+          .summaryGrid { grid-template-columns: repeat(5, 1fr); }
+          .actionRow > button { width: auto; }
+          .miniStats { grid-template-columns: repeat(3, 1fr); }
+          .purchaseHeader {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
           }
-          .summaryGrid {
-            grid-template-columns: 1fr 1fr;
-          }
-          .cardsLayout {
-            grid-template-columns: 1fr;
-          }
-          .detailInvoice {
-            text-align: left;
-          }
-          .miniStats {
-            grid-template-columns: 1fr;
-          }
-          .searchInput {
-            width: 100%;
-          }
+          .searchInput { width: 220px; }
           .purchaseCard {
-            grid-template-columns: 1fr;
-            gap: 8px;
-            padding: 14px 0 16px;
+            grid-template-columns: minmax(0, 1fr) auto auto;
+            gap: 12px;
           }
-          .purchaseMeta {
-            text-align: left;
-          }
-          .actionRow > button {
-            width: 100%;
-          }
-        }
-
-        @media (max-width: 560px) {
-          .pageRoot {
-            padding: 12px 12px 24px;
-          }
-          h1 {
-            font-size: 22px;
-          }
-          h2 {
-            font-size: 18px;
-          }
-          .hero {
-            padding: 14px;
-            border-radius: 20px;
-          }
-          .card {
-            padding: 14px;
-            border-radius: 18px;
-          }
-          .bigValue {
-            font-size: 20px;
-          }
-          .summaryValue {
-            font-size: 18px;
-          }
-          .cardItemTitle {
-            font-size: 16px;
-          }
-          .detailValue {
-            font-size: 24px;
-          }
-          .sectionTitle {
-            font-size: 18px;
-          }
-          .summaryGrid {
-            grid-template-columns: 1fr;
-          }
-          .bottomNav {
-            grid-template-columns: repeat(5, 1fr);
-            gap: 4px;
-            padding: 8px;
-            border-radius: 20px;
-          }
-          .navItem {
-            font-size: 12px;
-            padding: 10px 4px;
-          }
+          .purchaseMeta { text-align: right; }
+          .miniButton { width: auto; }
+          .detailInvoice { text-align: right; }
+          .bigValue { font-size: 24px; }
+          .detailValue { font-size: 30px; }
         }
       `}</style>
 
