@@ -20,6 +20,7 @@ const cartoes = [
     compras: [
       { id: 1, descricao: "Notebook Dell", categoria: "Tecnologia", data: "12/03/2026", valor: 2400, parcelas: "8 de 12" },
       { id: 2, descricao: "Mercado", categoria: "Alimentação", data: "18/03/2026", valor: 480, parcelas: "à vista" },
+      { id: 3, descricao: "Passagem", categoria: "Transporte", data: "20/03/2026", valor: 400, parcelas: "2 de 4" },
     ],
   },
   {
@@ -30,21 +31,20 @@ const cartoes = [
     fechamento: 5,
     vencimento: 12,
     compras: [
-      { id: 3, descricao: "Farmácia", categoria: "Saúde", data: "08/03/2026", valor: 220, parcelas: "à vista" },
+      { id: 4, descricao: "Farmácia", categoria: "Saúde", data: "08/03/2026", valor: 220, parcelas: "à vista" },
+      { id: 5, descricao: "Curso online", categoria: "Educação", data: "14/03/2026", valor: 700, parcelas: "3 de 6" },
     ],
   },
 ];
 
-function IconAction({ children }) {
-  return <button className="iconAction">{children}</button>;
-}
-
 function CompraItem({ compra }) {
   return (
     <div className="purchaseCard">
-      <div className="purchaseTitle">{compra.descricao}</div>
-      <div className="purchaseSub">{compra.data} • {compra.categoria}</div>
-      <div className="purchaseBottom">
+      <div>
+        <div className="purchaseTitle">{compra.descricao}</div>
+        <div className="purchaseSub">{compra.data} • {compra.categoria}</div>
+      </div>
+      <div className="purchaseFooter">
         <div>
           <div className="purchaseValue">{moeda(compra.valor)}</div>
           <div className="purchaseSub">{compra.parcelas}</div>
@@ -53,6 +53,10 @@ function CompraItem({ compra }) {
       </div>
     </div>
   );
+}
+
+function IconBtn({ children }) {
+  return <button className="iconBtn">{children}</button>;
 }
 
 export default function Page() {
@@ -72,45 +76,44 @@ export default function Page() {
           margin: 0;
           padding: 0;
           background:
-            radial-gradient(circle at top, #1a2a63 0%, #0b1537 38%, #060b1d 100%);
-          color: #f5f7ff;
+            radial-gradient(circle at top, #2a1458 0%, #170c36 38%, #0d0820 100%);
+          color: #f7f5ff;
           font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
           overflow-x: hidden;
         }
         .pageRoot {
           min-height: 100vh;
-          padding: 12px;
+          padding: 12px 12px 24px;
         }
         .container {
-          max-width: 720px;
+          max-width: 760px;
           margin: 0 auto;
           display: grid;
           gap: 14px;
         }
         .topBar {
-          background: rgba(10, 16, 38, 0.72);
-          border: 1px solid rgba(136, 154, 255, 0.10);
-          border-radius: 18px;
           min-height: 40px;
+          border-radius: 18px;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: rgba(245, 247, 255, 0.92);
-          font-weight: 700;
+          color: rgba(245,240,255,0.9);
           font-size: 13px;
+          font-weight: 700;
           letter-spacing: 0.02em;
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.06);
           backdrop-filter: blur(10px);
         }
         .card {
-          background: linear-gradient(180deg, rgba(11,18,48,0.94) 0%, rgba(8,14,38,0.94) 100%);
-          border: 1px solid rgba(124, 143, 255, 0.12);
+          background:
+            linear-gradient(180deg, rgba(31,17,66,0.92) 0%, rgba(21,12,46,0.96) 100%);
+          border: 1px solid rgba(255,255,255,0.06);
           border-radius: 24px;
           padding: 16px;
-          min-width: 0;
           box-shadow:
-            0 12px 30px rgba(0,0,0,0.22),
-            inset 0 1px 0 rgba(255,255,255,0.02);
+            0 12px 30px rgba(0,0,0,0.24),
+            inset 0 1px 0 rgba(255,255,255,0.03);
         }
         .rowBetween {
           display: flex;
@@ -121,38 +124,38 @@ export default function Page() {
         .title {
           font-size: 15px;
           font-weight: 700;
-          color: rgba(245,247,255,0.96);
+          color: rgba(248,245,255,0.96);
         }
         .muted {
-          color: rgba(215, 222, 255, 0.66);
+          color: rgba(224,216,245,0.66);
           font-size: 12px;
         }
-        .iconAction {
+        .iconBtn {
           width: 32px;
           height: 32px;
           min-width: 32px;
           border-radius: 12px;
-          border: 1px solid rgba(128, 145, 255, 0.16);
-          background: linear-gradient(180deg, rgba(98, 95, 255, 0.22) 0%, rgba(98, 95, 255, 0.14) 100%);
-          color: #ffffff;
+          border: 1px solid rgba(255,255,255,0.08);
+          background: rgba(255,255,255,0.06);
+          color: #fff;
           font-size: 16px;
           font-weight: 700;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 8px 18px rgba(56, 41, 145, 0.18);
+          box-shadow: 0 8px 16px rgba(0,0,0,0.14);
         }
-        .select {
+        .select, .input {
           width: 100%;
-          margin-top: 10px;
-          background: rgba(3, 8, 28, 0.94);
+          background: rgba(8, 5, 24, 0.9);
           color: #fff;
-          border: 1px solid rgba(121,140,248,.14);
-          border-radius: 18px;
-          padding: 14px 14px;
-          font-size: 15px;
+          border: 1px solid rgba(255,255,255,0.06);
+          border-radius: 16px;
+          padding: 13px 14px;
+          font-size: 14px;
           outline: none;
         }
+        .select { margin-top: 10px; }
         .heroHead {
           display: flex;
           justify-content: space-between;
@@ -160,28 +163,28 @@ export default function Page() {
           gap: 12px;
         }
         .heroName {
+          margin: 0 0 6px 0;
           font-size: 24px;
           font-weight: 800;
-          line-height: 1;
-          margin: 0 0 8px 0;
           letter-spacing: -0.04em;
+          line-height: 1;
         }
-        .heroInvoice {
+        .invoiceWrap {
           margin-top: 16px;
-          background: rgba(255,255,255,0.02);
-          border: 1px solid rgba(126, 145, 255, 0.08);
-          border-radius: 18px;
-          padding: 12px 14px;
+          padding: 14px;
+          border-radius: 20px;
+          background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(255,255,255,0.05);
         }
         .invoiceLabel {
           font-size: 11px;
-          color: rgba(213, 221, 255, 0.62);
-          margin-bottom: 4px;
           text-transform: uppercase;
-          letter-spacing: 0.03em;
+          letter-spacing: 0.04em;
+          color: rgba(224,216,245,0.6);
+          margin-bottom: 4px;
         }
         .invoiceValue {
-          font-size: 20px;
+          font-size: 22px;
           font-weight: 800;
           line-height: 1.1;
         }
@@ -191,33 +194,22 @@ export default function Page() {
           margin-top: 14px;
         }
         .statBox {
-          background: rgba(6, 11, 32, 0.88);
-          border: 1px solid rgba(124, 143, 255, 0.10);
           border-radius: 18px;
           padding: 12px 14px;
+          background: rgba(255,255,255,0.025);
+          border: 1px solid rgba(255,255,255,0.05);
         }
         .statLabel {
           font-size: 11px;
-          color: rgba(213, 221, 255, 0.62);
-          margin-bottom: 6px;
           text-transform: uppercase;
-          letter-spacing: 0.03em;
+          letter-spacing: 0.04em;
+          color: rgba(224,216,245,0.6);
+          margin-bottom: 6px;
         }
         .statValue {
           font-size: 17px;
           font-weight: 800;
           line-height: 1.1;
-          word-break: break-word;
-        }
-        .input {
-          width: 100%;
-          background: rgba(3, 8, 28, 0.94);
-          color: #fff;
-          border: 1px solid rgba(121,140,248,.14);
-          border-radius: 16px;
-          padding: 12px 14px;
-          font-size: 14px;
-          outline: none;
         }
         .sectionHeader {
           display: flex;
@@ -232,10 +224,10 @@ export default function Page() {
           margin-top: 12px;
         }
         .purchaseCard {
-          background: rgba(6, 11, 32, 0.88);
-          border: 1px solid rgba(124, 143, 255, 0.10);
           border-radius: 18px;
           padding: 12px;
+          background: rgba(255,255,255,0.025);
+          border: 1px solid rgba(255,255,255,0.05);
         }
         .purchaseTitle {
           font-size: 15px;
@@ -244,10 +236,10 @@ export default function Page() {
         }
         .purchaseSub {
           font-size: 12px;
-          color: rgba(213, 221, 255, 0.64);
+          color: rgba(224,216,245,0.64);
           line-height: 1.4;
         }
-        .purchaseBottom {
+        .purchaseFooter {
           display: flex;
           justify-content: space-between;
           align-items: center;
@@ -260,9 +252,9 @@ export default function Page() {
           font-weight: 800;
         }
         .miniBtn {
-          background: rgba(255,255,255,0.03);
+          background: rgba(255,255,255,0.05);
           color: #fff;
-          border: 1px solid rgba(124, 143, 255, 0.12);
+          border: 1px solid rgba(255,255,255,0.06);
           border-radius: 12px;
           padding: 9px 12px;
           font-size: 12px;
@@ -274,25 +266,23 @@ export default function Page() {
           display: grid;
           grid-template-columns: repeat(5, 1fr);
           gap: 4px;
-          background: rgba(8, 14, 34, 0.95);
-          border: 1px solid rgba(122, 147, 255, 0.14);
-          border-radius: 20px;
           padding: 8px;
-          margin-top: 8px;
-          box-shadow: 0 16px 34px rgba(0,0,0,0.24);
+          border-radius: 20px;
+          background: rgba(12, 8, 28, 0.88);
+          border: 1px solid rgba(255,255,255,0.06);
           backdrop-filter: blur(12px);
+          box-shadow: 0 16px 34px rgba(0,0,0,0.22);
         }
         .navItem {
           text-align: center;
-          color: rgba(231,236,255,0.86);
+          color: rgba(242,239,255,0.82);
           font-weight: 700;
           font-size: 12px;
           padding: 10px 4px;
           border-radius: 14px;
-          background: transparent;
         }
         .navItem.active {
-          background: rgba(124, 92, 255, 0.14);
+          background: rgba(130,92,255,0.18);
         }
       `}</style>
 
@@ -302,7 +292,7 @@ export default function Page() {
         <section className="card">
           <div className="rowBetween">
             <div className="title">Cartão selecionado</div>
-            <IconAction>+</IconAction>
+            <IconBtn>+</IconBtn>
           </div>
           <select className="select" value={selecionado} onChange={(e) => setSelecionado(e.target.value)}>
             {cartoes.map((c) => (
@@ -317,10 +307,10 @@ export default function Page() {
               <h1 className="heroName">{cartao.nome}</h1>
               <div className="muted">Fecha dia {cartao.fechamento} • Vence dia {cartao.vencimento}</div>
             </div>
-            <IconAction>✎</IconAction>
+            <IconBtn>✎</IconBtn>
           </div>
 
-          <div className="heroInvoice">
+          <div className="invoiceWrap">
             <div className="invoiceLabel">Fatura atual</div>
             <div className="invoiceValue">{moeda(cartao.usado)}</div>
           </div>
@@ -344,7 +334,7 @@ export default function Page() {
         <section className="card">
           <div className="sectionHeader">
             <div className="title">Compras</div>
-            <IconAction>+</IconAction>
+            <IconBtn>+</IconBtn>
           </div>
 
           <input
