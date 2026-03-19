@@ -62,6 +62,36 @@ function IconBtn({ children }) {
   return <button className="iconBtn">{children}</button>;
 }
 
+function MonthDropdown({ value, options, onSelect }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="monthDropdown">
+      <button className="monthTrigger" onClick={() => setOpen(!open)}>
+        <span>{value}</span>
+        <span className={`arrow ${open ? "up" : ""}`}>⌄</span>
+      </button>
+
+      {open && (
+        <div className="monthMenu">
+          {options.map((item) => (
+            <button
+              key={item}
+              className={`monthItem ${item === value ? "active" : ""}`}
+              onClick={() => {
+                onSelect(item);
+                setOpen(false);
+              }}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Page() {
   const [selecionado, setSelecionado] = useState(cartoes[0].id);
   const cartao = cartoes.find((c) => c.id === Number(selecionado)) || cartoes[0];
@@ -237,29 +267,60 @@ export default function Page() {
           gap: 8px;
           margin-bottom: 10px;
         }
-        .faturaSelect {
-          width: 132px;
-          appearance: none;
-          -webkit-appearance: none;
-          -moz-appearance: none;
-          background:
-            linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.03) 100%);
-          color: rgba(248,245,255,0.96);
-          border: 1px solid rgba(255,255,255,0.08);
+        .monthDropdown {
+          position: relative;
+          width: 118px;
+        }
+        .monthTrigger {
+          width: 100%;
+          height: 38px;
           border-radius: 12px;
-          padding: 9px 30px 9px 12px;
+          border: 1px solid rgba(255,255,255,0.08);
+          background: rgba(255,255,255,0.04);
+          color: rgba(248,245,255,0.94);
           font-size: 12px;
           font-weight: 600;
-          outline: none;
+          padding: 0 12px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
           box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
-          background-image:
-            linear-gradient(45deg, transparent 50%, rgba(255,255,255,0.8) 50%),
-            linear-gradient(135deg, rgba(255,255,255,0.8) 50%, transparent 50%);
-          background-position:
-            calc(100% - 16px) calc(50% - 2px),
-            calc(100% - 11px) calc(50% - 2px);
-          background-size: 5px 5px, 5px 5px;
-          background-repeat: no-repeat;
+        }
+        .arrow {
+          font-size: 12px;
+          opacity: 0.8;
+          transform: translateY(-1px);
+        }
+        .arrow.up {
+          transform: rotate(180deg) translateY(1px);
+        }
+        .monthMenu {
+          position: absolute;
+          top: calc(100% + 6px);
+          right: 0;
+          width: 150px;
+          padding: 6px;
+          border-radius: 16px;
+          background: rgba(21,12,46,0.96);
+          border: 1px solid rgba(255,255,255,0.08);
+          box-shadow: 0 16px 28px rgba(0,0,0,0.25);
+          z-index: 20;
+          backdrop-filter: blur(12px);
+        }
+        .monthItem {
+          width: 100%;
+          border: 0;
+          background: transparent;
+          color: rgba(248,245,255,0.92);
+          text-align: left;
+          padding: 10px 12px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: 600;
+        }
+        .monthItem.active {
+          background: rgba(130,92,255,0.18);
         }
         .purchaseList {
           display: grid;
@@ -382,11 +443,7 @@ export default function Page() {
         <section className="card">
           <div className="sectionHeader">
             <div className="title">Compras</div>
-            <select className="faturaSelect" value={mesFatura} onChange={(e) => setMesFatura(e.target.value)}>
-              {faturasDisponiveis.map((f) => (
-                <option key={f} value={f}>{f}</option>
-              ))}
-            </select>
+            <MonthDropdown value={mesFatura} options={faturasDisponiveis} onSelect={setMesFatura} />
             <IconBtn>+</IconBtn>
           </div>
 
