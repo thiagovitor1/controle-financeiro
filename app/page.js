@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -24,9 +25,11 @@ function startEndFromMonth(monthKey) {
   const toISO = (d) => d.toISOString().slice(0, 10);
   return { start: toISO(start), end: toISO(end) };
 }
-
-function monthDate(monthKey) {
-  return `${monthKey}-01`;
+function monthDate(monthKey) { return `${monthKey}-01`; }
+function addMonths(dateString, monthsToAdd) {
+  const d = new Date(dateString + 'T12:00:00');
+  d.setMonth(d.getMonth() + monthsToAdd);
+  return d.toISOString().slice(0, 10);
 }
 
 function LoginScreen() {
@@ -41,7 +44,6 @@ function LoginScreen() {
     e.preventDefault();
     setErr('');
     setMsg('');
-
     if (mode === 'signup') {
       const { error } = await supabase.auth.signUp({
         email,
@@ -52,7 +54,6 @@ function LoginScreen() {
       setMsg('Conta criada. Confira o e-mail para confirmar o cadastro.');
       return;
     }
-
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return setErr(error.message);
   }
@@ -60,14 +61,11 @@ function LoginScreen() {
   return (
     <main className="page">
       <div className="loginBox card">
-        <div className="badge">Controle Financeiro • V3</div>
+        <div className="badge">Controle Financeiro • V3.2</div>
         <h1 style={{ marginTop: 0 }}>{mode === 'login' ? 'Entrar' : 'Criar conta'}</h1>
-        <p className="muted">Agora o sistema já grava contas, categorias e lançamentos no banco.</p>
-
+        <p className="muted">Agora o sistema já inclui cartões, compras parceladas e antecipação de parcelas.</p>
         <form onSubmit={handleSubmit} className="grid" style={{ marginTop: 18 }}>
-          {mode === 'signup' && (
-            <input placeholder="Nome completo" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-          )}
+          {mode === 'signup' && <input placeholder="Nome completo" value={fullName} onChange={(e) => setFullName(e.target.value)} />}
           <input placeholder="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           <input placeholder="Senha" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
           <button type="submit">{mode === 'login' ? 'Entrar' : 'Criar conta'}</button>
@@ -75,7 +73,6 @@ function LoginScreen() {
             {mode === 'login' ? 'Quero criar conta' : 'Já tenho conta'}
           </button>
         </form>
-
         {err && <div className="error">{err}</div>}
         {msg && <div className="success">{msg}</div>}
       </div>
@@ -83,7 +80,7 @@ function LoginScreen() {
   );
 }
 
-function DashboardView({ summary, accounts, upcoming }) {
+function DashboardView({ summary, accounts, cards, installments }) {
   return (
     <>
       <section className="grid kpis">
@@ -91,6 +88,7 @@ function DashboardView({ summary, accounts, upcoming }) {
         <div className="card"><div className="muted">Saídas</div><div className="kpiValue">{brl(summary.expenses)}</div></div>
         <div className="card"><div className="muted">Saldo do mês</div><div className="kpiValue">{brl(summary.net)}</div></div>
         <div className="card"><div className="muted">Saldo em contas</div><div className="kpiValue">{brl(summary.accountsTotal)}</div></div>
+        <div className="card"><div className="muted">Cartões</div><div className="kpiValue">{cards.length}</div></div>
       </section>
 
       <section className="grid cols2" style={{ marginTop: 18 }}>
@@ -108,21 +106,21 @@ function DashboardView({ summary, accounts, upcoming }) {
         </div>
 
         <div className="card">
-          <h2 style={{ marginTop: 0 }}>Próximos vencimentos</h2>
-          {upcoming.length ? (
+          <h2 style={{ marginTop: 0 }}>Parcelas ativas</h2>
+          {installments.length ? (
             <table className="table">
-              <thead><tr><th>Descrição</th><th>Data</th><th className="money">Valor</th></tr></thead>
+              <thead><tr><th>Compra</th><th>Parcela</th><th className="money">Valor</th></tr></thead>
               <tbody>
-                {upcoming.map((item) => (
+                {installments.slice(0, 6).map((item) => (
                   <tr key={item.id}>
-                    <td>{item.description}</td>
-                    <td>{item.tx_date}</td>
-                    <td className="money">{brl(item.amount)}</td>
+                    <td>{item.card_purchases?.description || 'Compra'}</td>
+                    <td>{item.installment_number}</td>
+                    <td className="money">{brl(item.installment_amount)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          ) : <div className="empty">Sem pendências próximas neste mês.</div>}
+          ) : <div className="empty">Sem parcelas ativas.</div>}
         </div>
       </section>
     </>
@@ -250,7 +248,7 @@ function CategoriesView({ categories, onCreated }) {
   );
 }
 
-function LaunchView({ accounts, categories, selectedMonth, onCreated }) {
+function LaunchView({ accounts, categories, selectedMonth, transactions, onCreated }) {
   const [txType, setTxType] = useState('despesa');
   const [accountId, setAccountId] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -263,21 +261,9 @@ function LaunchView({ accounts, categories, selectedMonth, onCreated }) {
 
   async function ensureMonth(userId) {
     const month_ref = monthDate(selectedMonth);
-    const { data: existing } = await supabase
-      .from('monthly_periods')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('month_ref', month_ref)
-      .maybeSingle();
-
+    const { data: existing } = await supabase.from('monthly_periods').select('*').eq('user_id', userId).eq('month_ref', month_ref).maybeSingle();
     if (existing) return existing.id;
-
-    const { data, error } = await supabase
-      .from('monthly_periods')
-      .insert({ user_id: userId, month_ref, label: MONTHS[selectedMonth] })
-      .select()
-      .single();
-
+    const { data, error } = await supabase.from('monthly_periods').insert({ user_id: userId, month_ref, label: MONTHS[selectedMonth] }).select().single();
     if (error) throw error;
     return data.id;
   }
@@ -301,78 +287,276 @@ function LaunchView({ accounts, categories, selectedMonth, onCreated }) {
       });
       if (error) return setErr(error.message);
       setMsg('Lançamento salvo com sucesso.');
-      setDescription('');
-      setAmount('');
+      setDescription(''); setAmount('');
       onCreated?.();
-    } catch (e) {
-      setErr(e.message);
-    }
+    } catch (e) { setErr(e.message); }
   }
 
   return (
-    <div className="card">
-      <h2 style={{ marginTop: 0 }}>Novo lançamento</h2>
-      <form onSubmit={submit} className="stack">
-        <div className="row">
-          <select value={txType} onChange={(e) => setTxType(e.target.value)}>
-            <option value="despesa">Despesa</option>
-            <option value="receita">Receita</option>
-            <option value="pagamento_cartao">Pagamento cartão</option>
-          </select>
-          <input type="date" value={txDate} onChange={(e) => setTxDate(e.target.value)} />
-        </div>
-        <div className="row">
-          <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-            <option value="">Selecione a conta</option>
-            {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
-          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-            <option value="">Selecione a categoria</option>
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </div>
-        <input placeholder="Descrição" value={description} onChange={(e) => setDescription(e.target.value)} />
-        <div className="row">
-          <input placeholder="Valor" type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
-          <select value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="confirmado">Confirmado</option>
-            <option value="pendente">Pendente</option>
-          </select>
-        </div>
-        <button type="submit">Salvar lançamento</button>
-      </form>
-      {err && <div className="error">{err}</div>}
-      {msg && <div className="success">{msg}</div>}
+    <div className="grid cols2">
+      <div className="card">
+        <h2 style={{ marginTop: 0 }}>Novo lançamento</h2>
+        <form onSubmit={submit} className="stack">
+          <div className="row">
+            <select value={txType} onChange={(e) => setTxType(e.target.value)}>
+              <option value="despesa">Despesa</option>
+              <option value="receita">Receita</option>
+              <option value="pagamento_cartao">Pagamento cartão</option>
+            </select>
+            <input type="date" value={txDate} onChange={(e) => setTxDate(e.target.value)} />
+          </div>
+          <div className="row">
+            <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+              <option value="">Selecione a conta</option>
+              {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              <option value="">Selecione a categoria</option>
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <input placeholder="Descrição" value={description} onChange={(e) => setDescription(e.target.value)} />
+          <div className="row">
+            <input placeholder="Valor" type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            <select value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="confirmado">Confirmado</option>
+              <option value="pendente">Pendente</option>
+            </select>
+          </div>
+          <button type="submit">Salvar lançamento</button>
+        </form>
+        {err && <div className="error">{err}</div>}
+        {msg && <div className="success">{msg}</div>}
+      </div>
+
+      <div className="card">
+        <h2 style={{ marginTop: 0 }}>Lançamentos do mês</h2>
+        {transactions.length ? (
+          <table className="table">
+            <thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th className="money">Valor</th></tr></thead>
+            <tbody>
+              {transactions.map((t) => (
+                <tr key={t.id}>
+                  <td>{t.tx_date}</td>
+                  <td>{t.description}</td>
+                  <td>{t.tx_type}</td>
+                  <td className="money">{brl(t.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : <div className="empty">Ainda não há lançamentos neste mês.</div>}
+      </div>
     </div>
   );
 }
 
-function TransactionsView({ transactions }) {
+function CardsView({ cards, purchases, installments, selectedMonth, onCreated }) {
+  const [name, setName] = useState('');
+  const [limitAmount, setLimitAmount] = useState('');
+  const [closingDay, setClosingDay] = useState('10');
+  const [dueDay, setDueDay] = useState('17');
+  const [cardId, setCardId] = useState('');
+  const [purchaseDesc, setPurchaseDesc] = useState('');
+  const [purchaseAmount, setPurchaseAmount] = useState('');
+  const [purchaseDate, setPurchaseDate] = useState(`${selectedMonth}-01`);
+  const [installmentsCount, setInstallmentsCount] = useState('1');
+  const [selectedPurchase, setSelectedPurchase] = useState('');
+  const [advanceCount, setAdvanceCount] = useState('1');
+  const [msg, setMsg] = useState('');
+  const [err, setErr] = useState('');
+
+  async function ensureMonth(userId, monthRef) {
+    const { data: existing } = await supabase.from('monthly_periods').select('*').eq('user_id', userId).eq('month_ref', monthRef).maybeSingle();
+    if (existing) return existing.id;
+    const label = MONTHS[monthRef.slice(0, 7)] || monthRef;
+    const { data, error } = await supabase.from('monthly_periods').insert({ user_id: userId, month_ref: monthRef, label }).select().single();
+    if (error) throw error;
+    return data.id;
+  }
+
+  async function createCard(e) {
+    e.preventDefault();
+    setErr(''); setMsg('');
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from('credit_cards').insert({
+      user_id: user.id,
+      name,
+      limit_amount: Number(limitAmount || 0),
+      closing_day: Number(closingDay),
+      due_day: Number(dueDay)
+    });
+    if (error) return setErr(error.message);
+    setMsg('Cartão criado com sucesso.');
+    setName(''); setLimitAmount('');
+    onCreated?.();
+  }
+
+  async function createPurchase(e) {
+    e.preventDefault();
+    setErr(''); setMsg('');
+    const { data: { user } } = await supabase.auth.getUser();
+    const total = Number(purchaseAmount || 0);
+    const count = Number(installmentsCount || 1);
+    const installmentValue = Number((total / count).toFixed(2));
+
+    const { data: purchase, error } = await supabase.from('card_purchases').insert({
+      user_id: user.id,
+      card_id: cardId,
+      description: purchaseDesc,
+      purchase_date: purchaseDate,
+      total_amount: total,
+      installments_count: count
+    }).select().single();
+
+    if (error) return setErr(error.message);
+
+    for (let i = 1; i <= count; i++) {
+      const date = addMonths(purchaseDate, i - 1);
+      const monthRef = `${date.slice(0,7)}-01`;
+      const monthId = await ensureMonth(user.id, monthRef);
+      await supabase.from('installments').insert({
+        user_id: user.id,
+        purchase_id: purchase.id,
+        card_id: cardId,
+        month_id: monthId,
+        installment_number: i,
+        installment_amount: installmentValue,
+        installment_date: date,
+        status: 'ativa'
+      });
+    }
+
+    setMsg('Compra parcelada criada com sucesso.');
+    setCardId(''); setPurchaseDesc(''); setPurchaseAmount(''); setInstallmentsCount('1');
+    onCreated?.();
+  }
+
+  async function advanceInstallments(e) {
+    e.preventDefault();
+    setErr(''); setMsg('');
+    const { data: { user } } = await supabase.auth.getUser();
+    const count = Number(advanceCount || 1);
+
+    const { data: openInstallments, error: loadError } = await supabase
+      .from('installments')
+      .select('*')
+      .eq('purchase_id', selectedPurchase)
+      .eq('status', 'ativa')
+      .order('installment_number', { ascending: true })
+      .limit(count);
+
+    if (loadError) return setErr(loadError.message);
+    if (!openInstallments || !openInstallments.length) return setErr('Não há parcelas ativas para antecipar.');
+
+    const totalAdvance = openInstallments.reduce((s, i) => s + Number(i.installment_amount), 0);
+
+    const { error: adjError } = await supabase.from('installment_adjustments').insert({
+      user_id: user.id,
+      purchase_id: selectedPurchase,
+      adjustment_type: 'antecipacao_parcial',
+      installments_affected: openInstallments.length,
+      adjustment_amount: totalAdvance,
+      adjustment_date: new Date().toISOString().slice(0, 10),
+      notes: 'Antecipação feita pelo app'
+    });
+    if (adjError) return setErr(adjError.message);
+
+    const ids = openInstallments.map((i) => i.id);
+    const { error: updateError } = await supabase.from('installments').update({ status: 'antecipada' }).in('id', ids);
+    if (updateError) return setErr(updateError.message);
+
+    setMsg(`Antecipação registrada. Valor total: ${brl(totalAdvance)}`);
+    onCreated?.();
+  }
+
   return (
-    <div className="card">
-      <h2 style={{ marginTop: 0 }}>Lançamentos do mês</h2>
-      {transactions.length ? (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Descrição</th>
-              <th>Tipo</th>
-              <th className="money">Valor</th>
-            </tr>
-          </thead>
-          <tbody>
-            {transactions.map((t) => (
-              <tr key={t.id}>
-                <td>{t.tx_date}</td>
-                <td>{t.description}</td>
-                <td>{t.tx_type}</td>
-                <td className="money">{brl(t.amount)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : <div className="empty">Ainda não há lançamentos neste mês.</div>}
+    <div className="grid cols2">
+      <div className="stack">
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Novo cartão</h2>
+          <form onSubmit={createCard} className="stack">
+            <input placeholder="Nome do cartão" value={name} onChange={(e) => setName(e.target.value)} />
+            <input placeholder="Limite" type="number" step="0.01" value={limitAmount} onChange={(e) => setLimitAmount(e.target.value)} />
+            <div className="row">
+              <input placeholder="Fechamento" type="number" value={closingDay} onChange={(e) => setClosingDay(e.target.value)} />
+              <input placeholder="Vencimento" type="number" value={dueDay} onChange={(e) => setDueDay(e.target.value)} />
+            </div>
+            <button type="submit">Salvar cartão</button>
+          </form>
+        </div>
+
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Nova compra parcelada</h2>
+          <form onSubmit={createPurchase} className="stack">
+            <select value={cardId} onChange={(e) => setCardId(e.target.value)}>
+              <option value="">Selecione o cartão</option>
+              {cards.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <input placeholder="Descrição da compra" value={purchaseDesc} onChange={(e) => setPurchaseDesc(e.target.value)} />
+            <div className="row">
+              <input placeholder="Valor total" type="number" step="0.01" value={purchaseAmount} onChange={(e) => setPurchaseAmount(e.target.value)} />
+              <input placeholder="Parcelas" type="number" min="1" value={installmentsCount} onChange={(e) => setInstallmentsCount(e.target.value)} />
+            </div>
+            <input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} />
+            <button type="submit">Criar compra parcelada</button>
+          </form>
+        </div>
+
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Antecipar parcelas</h2>
+          <form onSubmit={advanceInstallments} className="stack">
+            <select value={selectedPurchase} onChange={(e) => setSelectedPurchase(e.target.value)}>
+              <option value="">Selecione a compra</option>
+              {purchases.map((p) => <option key={p.id} value={p.id}>{p.description}</option>)}
+            </select>
+            <input placeholder="Quantidade de parcelas" type="number" min="1" value={advanceCount} onChange={(e) => setAdvanceCount(e.target.value)} />
+            <button type="submit">Antecipar parcelas</button>
+          </form>
+        </div>
+
+        {err && <div className="error">{err}</div>}
+        {msg && <div className="success">{msg}</div>}
+      </div>
+
+      <div className="stack">
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Cartões</h2>
+          {cards.length ? (
+            <table className="table">
+              <thead><tr><th>Cartão</th><th>Fech./Venc.</th><th className="money">Limite</th></tr></thead>
+              <tbody>
+                {cards.map((c) => (
+                  <tr key={c.id}>
+                    <td>{c.name}</td>
+                    <td>{c.closing_day}/{c.due_day}</td>
+                    <td className="money">{brl(c.limit_amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : <div className="empty">Nenhum cartão cadastrado.</div>}
+        </div>
+
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Parcelas</h2>
+          {installments.length ? (
+            <table className="table">
+              <thead><tr><th>Compra</th><th>Parcela</th><th>Status</th><th className="money">Valor</th></tr></thead>
+              <tbody>
+                {installments.map((i) => (
+                  <tr key={i.id}>
+                    <td>{i.card_purchases?.description || 'Compra'}</td>
+                    <td>{i.installment_number}</td>
+                    <td><span className={`chip ${i.status === 'ativa' ? 'warn' : 'good'}`}>{i.status}</span></td>
+                    <td className="money">{brl(i.installment_amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : <div className="empty">Sem parcelas criadas ainda.</div>}
+        </div>
+      </div>
     </div>
   );
 }
@@ -383,7 +567,9 @@ function AppShell({ session }) {
   const [accounts, setAccounts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [transactions, setTransactions] = useState([]);
-  const [upcoming, setUpcoming] = useState([]);
+  const [cards, setCards] = useState([]);
+  const [purchases, setPurchases] = useState([]);
+  const [installments, setInstallments] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
 
   async function ensureProfile() {
@@ -399,23 +585,26 @@ function AppShell({ session }) {
     const userId = session.user.id;
     const { start, end } = startEndFromMonth(selectedMonth);
 
-    const [accountsRes, categoriesRes, txRes, upcomingRes] = await Promise.all([
+    const [accountsRes, categoriesRes, txRes, cardsRes, purchasesRes, instRes] = await Promise.all([
       supabase.from('accounts').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
       supabase.from('categories').select('*').eq('user_id', userId).order('name'),
       supabase.from('transactions').select('*').eq('user_id', userId).gte('tx_date', start).lte('tx_date', end).order('tx_date', { ascending: false }),
-      supabase.from('transactions').select('*').eq('user_id', userId).eq('status', 'pendente').gte('tx_date', start).lte('tx_date', end).order('tx_date', { ascending: true }).limit(5)
+      supabase.from('credit_cards').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
+      supabase.from('card_purchases').select('*').eq('user_id', userId).order('purchase_date', { ascending: false }),
+      supabase.from('installments').select('*, card_purchases(description)').eq('user_id', userId).order('installment_date', { ascending: true })
     ]);
 
     setAccounts(accountsRes.data || []);
     setCategories(categoriesRes.data || []);
     setTransactions(txRes.data || []);
-    setUpcoming(upcomingRes.data || []);
+    setCards(cardsRes.data || []);
+    setPurchases(purchasesRes.data || []);
+    setInstallments(instRes.data || []);
     setLoadingData(false);
   }
 
   useEffect(() => {
     ensureProfile().then(loadAll);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth]);
 
   const summary = useMemo(() => {
@@ -429,16 +618,14 @@ function AppShell({ session }) {
     await supabase.auth.signOut();
   }
 
-  if (loadingData) {
-    return <main className="page"><div className="card">Carregando dados...</div></main>;
-  }
+  if (loadingData) return <main className="page"><div className="card">Carregando dados...</div></main>;
 
   return (
     <main className="page">
       <section className="hero">
-        <div className="badge">Controle Financeiro • Painel</div>
+        <div className="badge">Controle Financeiro • V3.2</div>
         <h1 style={{ marginTop: 0 }}>Olá, {session.user.user_metadata?.full_name || session.user.email}</h1>
-        <p className="muted">V3.1: contas, categorias e lançamentos já funcionando com dados reais no Supabase.</p>
+        <p className="muted">Agora o sistema já tem cartões, compras parceladas e antecipação de parcelas.</p>
       </section>
 
       <div className="topbar">
@@ -451,21 +638,18 @@ function AppShell({ session }) {
         <button onClick={logout} style={{ width: 160 }}>Sair</button>
       </div>
 
-      {tab === 'dashboard' && <DashboardView summary={summary} accounts={accounts} upcoming={upcoming} />}
+      {tab === 'dashboard' && <DashboardView summary={summary} accounts={accounts} cards={cards} installments={installments.filter(i => i.status === 'ativa')} />}
       {tab === 'accounts' && <AccountsView accounts={accounts} onCreated={loadAll} />}
-      {tab === 'launch' && (
-        <div className="grid cols2">
-          <LaunchView accounts={accounts} categories={categories} selectedMonth={selectedMonth} onCreated={loadAll} />
-          <TransactionsView transactions={transactions} />
-        </div>
-      )}
+      {tab === 'launch' && <LaunchView accounts={accounts} categories={categories} selectedMonth={selectedMonth} transactions={transactions} onCreated={loadAll} />}
+      {tab === 'cards' && <CardsView cards={cards} purchases={purchases} installments={installments} selectedMonth={selectedMonth} onCreated={loadAll} />}
       {tab === 'categories' && <CategoriesView categories={categories} onCreated={loadAll} />}
 
       <div className="bottomNav">
         <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>Início</button>
         <button className={tab === 'accounts' ? 'active' : ''} onClick={() => setTab('accounts')}>Contas</button>
         <button className={tab === 'launch' ? 'active' : ''} onClick={() => setTab('launch')}>Lançar</button>
-        <button className={tab === 'categories' ? 'active' : ''} onClick={() => setTab('categories')}>Categorias</button>
+        <button className={tab === 'cards' ? 'active' : ''} onClick={() => setTab('cards')}>Cartões</button>
+        <button className={tab === 'categories' ? 'active' : ''} onClick={() => setTab('categories')}>Mais</button>
       </div>
     </main>
   );
