@@ -39,7 +39,7 @@ const dadosBase = {
   },
 };
 
-const cartoesMock = [
+const cartoesIniciais = [
   {
     id: 1,
     nome: "Nubank",
@@ -107,31 +107,45 @@ function cardBase(extra = {}) {
   };
 }
 
+function inputStyle(compacto = false) {
+  return {
+    width: "100%",
+    background: "rgba(9, 14, 33, 0.92)",
+    color: "#F3F6FF",
+    border: "1px solid rgba(122,146,255,0.18)",
+    borderRadius: 12,
+    padding: compacto ? "10px 12px" : "12px 14px",
+    fontSize: 15,
+    outline: "none",
+  };
+}
+
 function TopCard({ titulo, valor, destaque = false }) {
   return (
     <div
       style={cardBase({
         background: destaque ? "rgba(124, 92, 255, 0.16)" : "rgba(12, 19, 44, 0.78)",
         border: destaque ? "1px solid rgba(124, 92, 255, 0.35)" : "1px solid rgba(120, 146, 255, 0.14)",
-        minHeight: 108,
+        minHeight: 96,
+        padding: "14px 16px 12px",
       })}
     >
-      <div style={{ color: "rgba(222,228,255,0.78)", fontSize: 15, marginBottom: 10 }}>
+      <div style={{ color: "rgba(222,228,255,0.78)", fontSize: 14, marginBottom: 8 }}>
         {titulo}
       </div>
-      <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.03em" }}>{valor}</div>
+      <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em" }}>{valor}</div>
     </div>
   );
 }
 
 function ResumoCard({ titulo, valor, itens }) {
   return (
-    <div style={cardBase({ minHeight: 118 })}>
-      <div style={{ color: "rgba(226,231,255,0.86)", fontSize: 16, marginBottom: 10, fontWeight: 600 }}>
+    <div style={cardBase({ minHeight: 110, padding: "14px 14px 12px" })}>
+      <div style={{ color: "rgba(226,231,255,0.86)", fontSize: 15, marginBottom: 8, fontWeight: 600 }}>
         {titulo}
       </div>
-      <div style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.1 }}>{valor}</div>
-      <div style={{ marginTop: 10, color: "rgba(200,208,245,0.72)", fontSize: 14 }}>
+      <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.1 }}>{valor}</div>
+      <div style={{ marginTop: 8, color: "rgba(200,208,245,0.72)", fontSize: 13 }}>
         {itens} item(ns)
       </div>
     </div>
@@ -157,8 +171,8 @@ function HomeTab({ mes, setMes }) {
         style={{
           background: "rgba(11, 19, 45, 0.72)",
           border: "1px solid rgba(120,146,255,0.15)",
-          borderRadius: 28,
-          padding: "18px 18px 16px",
+          borderRadius: 24,
+          padding: "16px 18px 14px",
           boxShadow: "0 16px 38px rgba(0,0,0,0.22)",
           display: "flex",
           justifyContent: "space-between",
@@ -177,16 +191,16 @@ function HomeTab({ mes, setMes }) {
               color: "#DCE5FF",
               fontWeight: 700,
               fontSize: 14,
-              marginBottom: 12,
+              marginBottom: 10,
             }}
           >
-            Controle Financeiro • V3.7
+            Controle Financeiro • V3.7.1
           </div>
           <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em" }}>
             Olá, Thiago
           </div>
-          <div style={{ marginTop: 6, color: "rgba(212,220,255,0.72)", fontSize: 15 }}>
-            Visual mais limpo e navegação mais simples.
+          <div style={{ marginTop: 4, color: "rgba(212,220,255,0.72)", fontSize: 15 }}>
+            Mais refinada e com edição do cartão.
           </div>
         </div>
 
@@ -195,10 +209,10 @@ function HomeTab({ mes, setMes }) {
             background: "transparent",
             color: "rgba(232,236,255,0.85)",
             border: "1px solid rgba(130,148,255,0.18)",
-            borderRadius: 16,
-            padding: "12px 18px",
+            borderRadius: 14,
+            padding: "10px 16px",
             fontWeight: 700,
-            fontSize: 15,
+            fontSize: 14,
             cursor: "pointer",
           }}
         >
@@ -208,7 +222,7 @@ function HomeTab({ mes, setMes }) {
 
       <section
         style={{
-          marginTop: 16,
+          marginTop: 14,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "end",
@@ -217,22 +231,13 @@ function HomeTab({ mes, setMes }) {
         }}
       >
         <div>
-          <div style={{ color: "rgba(224,230,255,0.8)", fontSize: 15, marginBottom: 8 }}>
+          <div style={{ color: "rgba(224,230,255,0.8)", fontSize: 14, marginBottom: 8 }}>
             Mês principal
           </div>
           <select
             value={mes}
             onChange={(e) => setMes(e.target.value)}
-            style={{
-              background: "rgba(11, 19, 45, 0.82)",
-              color: "#F3F6FF",
-              border: "1px solid rgba(122,146,255,0.18)",
-              borderRadius: 14,
-              padding: "12px 14px",
-              minWidth: 220,
-              fontSize: 16,
-              outline: "none",
-            }}
+            style={{ ...inputStyle(), minWidth: 220 }}
           >
             {meses.map((m) => (
               <option key={m} value={m}>
@@ -245,10 +250,10 @@ function HomeTab({ mes, setMes }) {
 
       <section
         style={{
-          marginTop: 16,
+          marginTop: 14,
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
-          gap: 14,
+          gap: 12,
         }}
       >
         <TopCard titulo="Saldo do mês" valor={moeda(saldoMes)} destaque />
@@ -259,10 +264,10 @@ function HomeTab({ mes, setMes }) {
 
       <section
         style={{
-          marginTop: 14,
+          marginTop: 12,
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          gap: 12,
+          gap: 10,
         }}
       >
         <ResumoCard titulo="Contas Fixas" valor={moeda(dados.cards.fixas.valor)} itens={dados.cards.fixas.itens} />
@@ -275,31 +280,11 @@ function HomeTab({ mes, setMes }) {
   );
 }
 
-function ActionButton({ children, onClick, secondary = False }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        background: secondary ? "rgba(255,255,255,0.04)" : "linear-gradient(90deg, #6d7cff 0%, #8862ff 100%)",
-        color: "#F5F7FF",
-        border: secondary ? "1px solid rgba(128,150,255,0.16)" : "none",
-        borderRadius: 16,
-        padding: "14px 16px",
-        fontWeight: 800,
-        fontSize: 16,
-        cursor: "pointer",
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
 function MiniTopCard({ titulo, valor }) {
   return (
-    <div style={cardBase({ minHeight: 100 })}>
+    <div style={cardBase({ minHeight: 90, padding: "14px 16px 12px" })}>
       <div style={{ color: "rgba(215,223,255,0.72)", fontSize: 14, marginBottom: 8 }}>{titulo}</div>
-      <div style={{ fontSize: 28, fontWeight: 800 }}>{valor}</div>
+      <div style={{ fontSize: 22, fontWeight: 800 }}>{valor}</div>
     </div>
   );
 }
@@ -316,12 +301,13 @@ function CartaoItem({ cartao, ativo, onClick }) {
           background: ativo ? "rgba(124, 92, 255, 0.12)" : "rgba(12, 19, 44, 0.72)",
           cursor: "pointer",
           width: "100%",
+          padding: "14px",
         }),
       }}
     >
-      <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 6 }}>{cartao.nome}</div>
-      <div style={{ color: "rgba(220,228,255,0.82)", fontSize: 15 }}>Fatura atual: {moeda(cartao.usado)}</div>
-      <div style={{ color: "rgba(200,208,245,0.72)", fontSize: 14, marginTop: 4 }}>
+      <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 6 }}>{cartao.nome}</div>
+      <div style={{ color: "rgba(220,228,255,0.82)", fontSize: 14 }}>Fatura atual: {moeda(cartao.usado)}</div>
+      <div style={{ color: "rgba(200,208,245,0.72)", fontSize: 13, marginTop: 4, lineHeight: 1.35 }}>
         Disponível: {moeda(disponivel)} • Fecha dia {cartao.fechamento} • Vence dia {cartao.vencimento}
       </div>
     </button>
@@ -335,8 +321,9 @@ function CompraLinha({ compra }) {
         padding: "14px 0",
         borderBottom: "1px solid rgba(120,146,255,0.10)",
         display: "grid",
-        gridTemplateColumns: "1.2fr .7fr .5fr .6fr",
+        gridTemplateColumns: "1.2fr .7fr .5fr .55fr",
         gap: 12,
+        alignItems: "center",
       }}
     >
       <div>
@@ -365,52 +352,95 @@ function CompraLinha({ compra }) {
 }
 
 function CartoesTab() {
-  const [cartaoAtivo, setCartaoAtivo] = useState(cartoesMock[0]);
-  const totalLimite = cartoesMock.reduce((s, c) => s + c.limite, 0);
-  const totalUsado = cartoesMock.reduce((s, c) => s + c.usado, 0);
+  const [cartoes, setCartoes] = useState(cartoesIniciais);
+  const [cartaoAtivoId, setCartaoAtivoId] = useState(cartoesIniciais[0].id);
+  const [busca, setBusca] = useState("");
+  const [editando, setEditando] = useState(false);
+  const cartaoAtivo = cartoes.find((c) => c.id === cartaoAtivoId) || cartoes[0];
+
+  const [limiteEdit, setLimiteEdit] = useState(cartaoAtivo.limite);
+  const [fechamentoEdit, setFechamentoEdit] = useState(cartaoAtivo.fechamento);
+  const [vencimentoEdit, setVencimentoEdit] = useState(cartaoAtivo.vencimento);
+  const [mensagem, setMensagem] = useState("");
+
+  const totalLimite = cartoes.reduce((s, c) => s + c.limite, 0);
+  const totalUsado = cartoes.reduce((s, c) => s + c.usado, 0);
   const totalDisponivel = totalLimite - totalUsado;
+
+  const comprasFiltradas = cartaoAtivo.compras.filter((compra) =>
+    compra.descricao.toLowerCase().includes(busca.toLowerCase())
+  );
+
+  function iniciarEdicao() {
+    setLimiteEdit(cartaoAtivo.limite);
+    setFechamentoEdit(cartaoAtivo.fechamento);
+    setVencimentoEdit(cartaoAtivo.vencimento);
+    setEditando(true);
+    setMensagem("");
+  }
+
+  function salvarEdicao() {
+    setCartoes((prev) =>
+      prev.map((c) =>
+        c.id === cartaoAtivo.id
+          ? {
+              ...c,
+              limite: Number(limiteEdit),
+              fechamento: Number(fechamentoEdit),
+              vencimento: Number(vencimentoEdit),
+            }
+          : c
+      )
+    );
+    setEditando(false);
+    setMensagem("Cartão atualizado com sucesso.");
+  }
 
   return (
     <>
-      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 14 }}>
+      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
         <MiniTopCard titulo="Fatura do mês" valor={moeda(totalUsado)} />
         <MiniTopCard titulo="Limite usado" valor={moeda(totalUsado)} />
         <MiniTopCard titulo="Limite disponível" valor={moeda(totalDisponivel)} />
       </section>
 
-      <section style={{ marginTop: 16, display: "flex", gap: 12, flexWrap: "wrap" }}>
+      <section style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
         <button style={{
           background: "linear-gradient(90deg, #6d7cff 0%, #8862ff 100%)",
           color: "#F5F7FF",
           border: "none",
-          borderRadius: 16,
-          padding: "14px 18px",
+          borderRadius: 14,
+          padding: "12px 16px",
           fontWeight: 800,
-          fontSize: 16,
+          fontSize: 15,
           cursor: "pointer",
         }}>Novo cartão</button>
         <button style={{
           background: "rgba(255,255,255,0.04)",
           color: "#F5F7FF",
           border: "1px solid rgba(128,150,255,0.16)",
-          borderRadius: 16,
-          padding: "14px 18px",
+          borderRadius: 14,
+          padding: "12px 16px",
           fontWeight: 800,
-          fontSize: 16,
+          fontSize: 15,
           cursor: "pointer",
         }}>Nova compra</button>
       </section>
 
-      <section style={{ marginTop: 18, display: "grid", gridTemplateColumns: "320px 1fr", gap: 16 }}>
+      <section style={{ marginTop: 16, display: "grid", gridTemplateColumns: "300px 1fr", gap: 14 }}>
         <div style={cardBase({ padding: 14 })}>
           <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 12 }}>Meus cartões</div>
-          <div style={{ display: "grid", gap: 12 }}>
-            {cartoesMock.map((cartao) => (
+          <div style={{ display: "grid", gap: 10 }}>
+            {cartoes.map((cartao) => (
               <CartaoItem
                 key={cartao.id}
                 cartao={cartao}
-                ativo={cartaoAtivo.id === cartao.id}
-                onClick={() => setCartaoAtivo(cartao)}
+                ativo={cartaoAtivoId === cartao.id}
+                onClick={() => {
+                  setCartaoAtivoId(cartao.id);
+                  setEditando(false);
+                  setMensagem("");
+                }}
               />
             ))}
           </div>
@@ -430,42 +460,110 @@ function CartoesTab() {
             </div>
           </div>
 
-          <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+          <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {!editando ? (
+              <button
+                onClick={iniciarEdicao}
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  color: "#F5F7FF",
+                  border: "1px solid rgba(128,150,255,0.16)",
+                  borderRadius: 14,
+                  padding: "10px 14px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Editar cartão
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={salvarEdicao}
+                  style={{
+                    background: "linear-gradient(90deg, #6d7cff 0%, #8862ff 100%)",
+                    color: "#F5F7FF",
+                    border: "none",
+                    borderRadius: 14,
+                    padding: "10px 14px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  Salvar alterações
+                </button>
+                <button
+                  onClick={() => setEditando(false)}
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    color: "#F5F7FF",
+                    border: "1px solid rgba(128,150,255,0.16)",
+                    borderRadius: 14,
+                    padding: "10px 14px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancelar
+                </button>
+              </>
+            )}
+          </div>
+
+          {mensagem && (
+            <div style={{
+              marginTop: 12,
+              padding: "10px 12px",
+              borderRadius: 12,
+              background: "rgba(124, 92, 255, 0.14)",
+              border: "1px solid rgba(124, 92, 255, 0.24)",
+              color: "#E7DDFF",
+              fontSize: 14,
+              fontWeight: 600,
+            }}>
+              {mensagem}
+            </div>
+          )}
+
+          <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: editando ? "repeat(3, 1fr)" : "repeat(3, 1fr)", gap: 12 }}>
             <div style={cardBase({ minHeight: 86 })}>
               <div style={{ color: "rgba(212,220,255,0.72)", fontSize: 14, marginBottom: 8 }}>Limite total</div>
-              <div style={{ fontSize: 24, fontWeight: 800 }}>{moeda(cartaoAtivo.limite)}</div>
+              {!editando ? (
+                <div style={{ fontSize: 24, fontWeight: 800 }}>{moeda(cartaoAtivo.limite)}</div>
+              ) : (
+                <input style={inputStyle(true)} value={limiteEdit} onChange={(e) => setLimiteEdit(e.target.value)} />
+              )}
             </div>
             <div style={cardBase({ minHeight: 86 })}>
-              <div style={{ color: "rgba(212,220,255,0.72)", fontSize: 14, marginBottom: 8 }}>Usado</div>
-              <div style={{ fontSize: 24, fontWeight: 800 }}>{moeda(cartaoAtivo.usado)}</div>
+              <div style={{ color: "rgba(212,220,255,0.72)", fontSize: 14, marginBottom: 8 }}>Fechamento</div>
+              {!editando ? (
+                <div style={{ fontSize: 24, fontWeight: 800 }}>{cartaoAtivo.fechamento}</div>
+              ) : (
+                <input style={inputStyle(true)} value={fechamentoEdit} onChange={(e) => setFechamentoEdit(e.target.value)} />
+              )}
             </div>
             <div style={cardBase({ minHeight: 86 })}>
-              <div style={{ color: "rgba(212,220,255,0.72)", fontSize: 14, marginBottom: 8 }}>Disponível</div>
-              <div style={{ fontSize: 24, fontWeight: 800 }}>{moeda(cartaoAtivo.limite - cartaoAtivo.usado)}</div>
+              <div style={{ color: "rgba(212,220,255,0.72)", fontSize: 14, marginBottom: 8 }}>Vencimento</div>
+              {!editando ? (
+                <div style={{ fontSize: 24, fontWeight: 800 }}>{cartaoAtivo.vencimento}</div>
+              ) : (
+                <input style={inputStyle(true)} value={vencimentoEdit} onChange={(e) => setVencimentoEdit(e.target.value)} />
+              )}
             </div>
           </div>
 
           <div style={{ marginTop: 20, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <div style={{ fontSize: 22, fontWeight: 800 }}>Compras</div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <input
-                placeholder="Buscar compra"
-                style={{
-                  background: "rgba(9, 14, 33, 0.92)",
-                  color: "#F3F6FF",
-                  border: "1px solid rgba(122,146,255,0.18)",
-                  borderRadius: 12,
-                  padding: "10px 12px",
-                  minWidth: 180,
-                  fontSize: 15,
-                  outline: "none",
-                }}
-              />
-            </div>
+            <input
+              placeholder="Buscar compra"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              style={{ ...inputStyle(true), minWidth: 220 }}
+            />
           </div>
 
           <div style={{ marginTop: 8 }}>
-            {cartaoAtivo.compras.map((compra) => (
+            {comprasFiltradas.map((compra) => (
               <CompraLinha key={compra.id} compra={compra} />
             ))}
           </div>
