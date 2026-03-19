@@ -98,8 +98,7 @@ export default function Page() {
         html, body {
           margin: 0;
           padding: 0;
-          background:
-            radial-gradient(circle at top, #2a1458 0%, #170c36 38%, #0d0820 100%);
+          background: radial-gradient(circle at top, #2a1458 0%, #170c36 38%, #0d0820 100%);
           color: #f7f5ff;
           font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
           overflow-x: hidden;
@@ -129,14 +128,11 @@ export default function Page() {
           backdrop-filter: blur(10px);
         }
         .card {
-          background:
-            linear-gradient(180deg, rgba(31,17,66,0.92) 0%, rgba(21,12,46,0.96) 100%);
+          background: linear-gradient(180deg, rgba(31,17,66,0.92) 0%, rgba(21,12,46,0.96) 100%);
           border: 1px solid rgba(255,255,255,0.06);
           border-radius: 24px;
           padding: 16px;
-          box-shadow:
-            0 12px 30px rgba(0,0,0,0.24),
-            inset 0 1px 0 rgba(255,255,255,0.03);
+          box-shadow: 0 12px 30px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.03);
         }
         .rowBetween {
           display: flex;
@@ -242,14 +238,28 @@ export default function Page() {
           margin-bottom: 10px;
         }
         .faturaSelect {
-          width: 140px;
-          background: rgba(8, 5, 24, 0.9);
-          color: #fff;
-          border: 1px solid rgba(255,255,255,0.06);
-          border-radius: 14px;
-          padding: 10px 12px;
-          font-size: 13px;
+          width: 132px;
+          appearance: none;
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.03) 100%);
+          color: rgba(248,245,255,0.96);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 12px;
+          padding: 9px 30px 9px 12px;
+          font-size: 12px;
+          font-weight: 600;
           outline: none;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+          background-image:
+            linear-gradient(45deg, transparent 50%, rgba(255,255,255,0.8) 50%),
+            linear-gradient(135deg, rgba(255,255,255,0.8) 50%, transparent 50%);
+          background-position:
+            calc(100% - 16px) calc(50% - 2px),
+            calc(100% - 11px) calc(50% - 2px);
+          background-size: 5px 5px, 5px 5px;
+          background-repeat: no-repeat;
         }
         .purchaseList {
           display: grid;
