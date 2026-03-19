@@ -1,285 +1,336 @@
-'use client';
+"use client";
 
-import { useMemo, useState } from 'react';
+import { useState } from "react";
 
-const cardsSeed = [
+function moeda(v) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(Number(v || 0));
+}
+
+const cartoes = [
   {
-    id: 'nubank',
-    name: 'Nubank',
-    limit: 8800,
-    closingDay: 25,
-    dueDay: 1,
-    invoice: 3280,
-    purchases: [
-      { id: '1', title: 'Notebook Dell', category: 'Tecnologia', date: '12/03/2026', amount: 2400, installment: '8 de 12' },
-      { id: '2', title: 'Mercado', category: 'Alimentação', date: '18/03/2026', amount: 480, installment: 'à vista' },
-      { id: '3', title: 'Passagem', category: 'Transporte', date: '20/03/2026', amount: 400, installment: '2 de 4' },
+    id: 1,
+    nome: "Nubank",
+    limite: 8800,
+    usado: 3280,
+    fechamento: 25,
+    vencimento: 1,
+    compras: [
+      { id: 1, descricao: "Notebook Dell", categoria: "Tecnologia", data: "12/03/2026", valor: 2400, parcelas: "8 de 12" },
+      { id: 2, descricao: "Mercado", categoria: "Alimentação", data: "18/03/2026", valor: 480, parcelas: "à vista" },
+      { id: 3, descricao: "Passagem", categoria: "Transporte", data: "20/03/2026", valor: 400, parcelas: "2 de 4" },
     ],
   },
   {
-    id: 'itau-azul',
-    name: 'Itaú Azul',
-    limit: 3500,
-    closingDay: 5,
-    dueDay: 12,
-    invoice: 920,
-    purchases: [
-      { id: '4', title: 'Farmácia', category: 'Saúde', date: '10/03/2026', amount: 180, installment: 'à vista' },
-      { id: '5', title: 'Uber', category: 'Mobilidade', date: '14/03/2026', amount: 64, installment: 'à vista' },
+    id: 2,
+    nome: "Itaú Azul",
+    limite: 3500,
+    usado: 920,
+    fechamento: 5,
+    vencimento: 12,
+    compras: [
+      { id: 4, descricao: "Farmácia", categoria: "Saúde", data: "08/03/2026", valor: 220, parcelas: "à vista" },
+      { id: 5, descricao: "Curso online", categoria: "Educação", data: "14/03/2026", valor: 700, parcelas: "3 de 6" },
     ],
   },
 ];
 
-function brl(value) {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-function IconButton({ children, onClick, label }) {
-  return (
-    <button aria-label={label} onClick={onClick} style={styles.iconButton}>
-      {children}
-    </button>
-  );
-}
-
 export default function Page() {
-  const [cards, setCards] = useState(cardsSeed);
-  const [selectedId, setSelectedId] = useState(cardsSeed[0].id);
-  const [search, setSearch] = useState('');
-  const [editing, setEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ limit: '', closingDay: '', dueDay: '' });
+  const [selecionado, setSelecionado] = useState(cartoes[0].id);
+  const [busca, setBusca] = useState("");
 
-  const selectedCard = useMemo(
-    () => cards.find((card) => card.id === selectedId) || cards[0],
-    [cards, selectedId]
+  const cartao = cartoes.find((c) => c.id === Number(selecionado)) || cartoes[0];
+  const compras = cartao.compras.filter((c) =>
+    c.descricao.toLowerCase().includes(busca.toLowerCase())
   );
 
-  const filteredPurchases = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return selectedCard.purchases;
-    return selectedCard.purchases.filter((item) =>
-      [item.title, item.category, item.date, item.installment].join(' ').toLowerCase().includes(term)
-    );
-  }, [selectedCard, search]);
-
-  const available = selectedCard.limit - selectedCard.invoice;
-
-  function openEdit() {
-    setEditForm({
-      limit: String(selectedCard.limit),
-      closingDay: String(selectedCard.closingDay),
-      dueDay: String(selectedCard.dueDay),
-    });
-    setEditing(true);
-  }
-
-  function saveEdit() {
-    setCards((current) =>
-      current.map((card) =>
-        card.id === selectedId
-          ? {
-              ...card,
-              limit: Number(editForm.limit) || card.limit,
-              closingDay: Number(editForm.closingDay) || card.closingDay,
-              dueDay: Number(editForm.dueDay) || card.dueDay,
-            }
-          : card
-      )
-    );
-    setEditing(false);
-  }
-
   return (
-    <main style={styles.page}>
-      <div style={styles.shell}>
-        <section style={styles.sectionCard}>
-          <div style={styles.sectionHeader}>
+    <main className="pageRoot">
+      <style jsx global>{`
+        * { box-sizing: border-box; }
+        html, body {
+          margin: 0;
+          padding: 0;
+          background: radial-gradient(circle at top, #18285d 0%, #09122e 38%, #050a19 100%);
+          color: #f2f5ff;
+          font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          overflow-x: hidden;
+        }
+        .pageRoot {
+          min-height: 100vh;
+          padding: 12px;
+        }
+        .container {
+          max-width: 720px;
+          margin: 0 auto;
+          display: grid;
+          gap: 14px;
+        }
+        .card {
+          background: rgba(10, 17, 48, 0.9);
+          border: 1px solid rgba(119, 139, 255, 0.16);
+          border-radius: 22px;
+          padding: 14px;
+          min-width: 0;
+        }
+        .rowBetween {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 10px;
+        }
+        .title {
+          font-size: 16px;
+          font-weight: 700;
+          letter-spacing: -0.01em;
+        }
+        .muted {
+          color: rgba(213, 221, 255, 0.68);
+          font-size: 12px;
+        }
+        .iconBtn {
+          width: 40px;
+          height: 40px;
+          border-radius: 14px;
+          border: 1px solid rgba(119, 139, 255, 0.2);
+          background: rgba(111, 104, 255, 0.18);
+          color: #fff;
+          font-size: 24px;
+          font-weight: 700;
+        }
+        .select {
+          width: 100%;
+          margin-top: 10px;
+          background: #020a29;
+          color: #fff;
+          border: 1px solid rgba(119, 139, 255, 0.16);
+          border-radius: 16px;
+          padding: 14px 14px;
+          font-size: 15px;
+          outline: none;
+        }
+        .heroHead {
+          display: flex;
+          justify-content: space-between;
+          align-items: start;
+          gap: 12px;
+        }
+        .heroName {
+          font-size: 28px;
+          font-weight: 800;
+          line-height: 1;
+          margin: 0 0 6px 0;
+          letter-spacing: -0.03em;
+        }
+        .heroInvoice {
+          text-align: right;
+        }
+        .invoiceLabel {
+          font-size: 12px;
+          color: rgba(213, 221, 255, 0.68);
+          margin-bottom: 4px;
+        }
+        .invoiceValue {
+          font-size: 22px;
+          font-weight: 800;
+          line-height: 1.1;
+        }
+        .editRow {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 10px;
+          margin-top: 14px;
+        }
+        .pillStats {
+          display: grid;
+          gap: 10px;
+          margin-top: 14px;
+        }
+        .statBox {
+          background: rgba(7, 12, 34, 0.82);
+          border: 1px solid rgba(119, 139, 255, 0.14);
+          border-radius: 18px;
+          padding: 12px 14px;
+        }
+        .statLabel {
+          font-size: 11px;
+          color: rgba(213, 221, 255, 0.68);
+          margin-bottom: 6px;
+        }
+        .statValue {
+          font-size: 18px;
+          font-weight: 800;
+          line-height: 1.1;
+          word-break: break-word;
+        }
+        .input {
+          width: 100%;
+          background: #020a29;
+          color: #fff;
+          border: 1px solid rgba(119, 139, 255, 0.16);
+          border-radius: 14px;
+          padding: 12px 14px;
+          font-size: 14px;
+          outline: none;
+        }
+        .purchaseHeader {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 10px;
+        }
+        .purchaseList {
+          display: grid;
+          gap: 10px;
+        }
+        .purchaseCard {
+          background: rgba(7, 12, 34, 0.82);
+          border: 1px solid rgba(119, 139, 255, 0.12);
+          border-radius: 18px;
+          padding: 12px;
+        }
+        .purchaseTitle {
+          font-size: 15px;
+          font-weight: 700;
+          margin-bottom: 4px;
+        }
+        .purchaseSub {
+          font-size: 12px;
+          color: rgba(213, 221, 255, 0.68);
+          line-height: 1.4;
+        }
+        .purchaseBottom {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 8px;
+          margin-top: 10px;
+          flex-wrap: wrap;
+        }
+        .purchaseValue {
+          font-size: 16px;
+          font-weight: 800;
+        }
+        .miniBtn {
+          background: rgba(255,255,255,0.04);
+          color: #fff;
+          border: 1px solid rgba(119, 139, 255, 0.16);
+          border-radius: 12px;
+          padding: 9px 12px;
+          font-size: 13px;
+          font-weight: 700;
+        }
+        .bottomNav {
+          position: sticky;
+          bottom: 10px;
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 4px;
+          background: rgba(8, 14, 34, 0.95);
+          border: 1px solid rgba(122, 147, 255, 0.16);
+          border-radius: 20px;
+          padding: 8px;
+          margin-top: 8px;
+        }
+        .navItem {
+          text-align: center;
+          color: rgba(231,236,255,0.9);
+          font-weight: 700;
+          font-size: 12px;
+          padding: 10px 4px;
+          border-radius: 14px;
+          background: transparent;
+        }
+        .navItem.active {
+          background: rgba(124, 92, 255, 0.16);
+        }
+      `}</style>
+
+      <div className="container">
+        <section className="card">
+          <div className="rowBetween">
+            <div className="title">Cartão selecionado</div>
+            <button className="iconBtn">＋</button>
+          </div>
+          <select className="select" value={selecionado} onChange={(e) => setSelecionado(e.target.value)}>
+            {cartoes.map((c) => (
+              <option key={c.id} value={c.id}>{c.nome}</option>
+            ))}
+          </select>
+        </section>
+
+        <section className="card">
+          <div className="heroHead">
             <div>
-              <div style={styles.sectionLabel}>Cartão selecionado</div>
+              <h1 className="heroName">{cartao.nome}</h1>
+              <div className="muted">Fecha dia {cartao.fechamento} • Vence dia {cartao.vencimento}</div>
             </div>
-            <IconButton label="Novo cartão" onClick={() => alert('Abrir cadastro de novo cartão')}>
-              ＋
-            </IconButton>
+            <button className="iconBtn">✎</button>
           </div>
 
-          <div style={styles.selectWrap}>
-            <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} style={styles.select}>
-              {cards.map((card) => (
-                <option key={card.id} value={card.id}>
-                  {card.name}
-                </option>
-              ))}
-            </select>
+          <div className="heroInvoice" style={{ marginTop: 14, textAlign: "left" }}>
+            <div className="invoiceLabel">Fatura atual</div>
+            <div className="invoiceValue">{moeda(cartao.usado)}</div>
+          </div>
+
+          <div className="pillStats">
+            <div className="statBox">
+              <div className="statLabel">Limite total</div>
+              <div className="statValue">{moeda(cartao.limite)}</div>
+            </div>
+            <div className="statBox">
+              <div className="statLabel">Fechamento</div>
+              <div className="statValue">{cartao.fechamento}</div>
+            </div>
+            <div className="statBox">
+              <div className="statLabel">Vencimento</div>
+              <div className="statValue">{cartao.vencimento}</div>
+            </div>
           </div>
         </section>
 
-        <section style={styles.sectionCard}>
-          <div style={styles.cardTopRow}>
-            <div>
-              <div style={styles.cardNameRow}>
-                <h1 style={styles.cardName}>{selectedCard.name}</h1>
-                <IconButton label="Editar cartão" onClick={openEdit}>✎</IconButton>
-              </div>
-              <p style={styles.cardMeta}>Fecha dia {selectedCard.closingDay} • Vence dia {selectedCard.dueDay}</p>
-            </div>
-            <div style={styles.invoiceWrap}>
-              <div style={styles.invoiceLabel}>Fatura atual</div>
-              <div style={styles.invoiceValue}>{brl(selectedCard.invoice)}</div>
-            </div>
-          </div>
-
-          <div style={styles.kpiGrid}>
-            <div style={styles.kpiCard}>
-              <span style={styles.kpiLabel}>Limite total</span>
-              <strong style={styles.kpiValue}>{brl(selectedCard.limit)}</strong>
-            </div>
-            <div style={styles.kpiCard}>
-              <span style={styles.kpiLabel}>Fechamento</span>
-              <strong style={styles.kpiValue}>{selectedCard.closingDay}</strong>
-            </div>
-            <div style={styles.kpiCard}>
-              <span style={styles.kpiLabel}>Vencimento</span>
-              <strong style={styles.kpiValue}>{selectedCard.dueDay}</strong>
-            </div>
-            <div style={{ ...styles.kpiCard, ...styles.kpiHighlight }}>
-              <span style={styles.kpiLabel}>Disponível</span>
-              <strong style={styles.kpiValue}>{brl(available)}</strong>
-            </div>
-          </div>
-
-          {editing && (
-            <div style={styles.editPanel}>
-              <div style={styles.formGrid}>
-                <input
-                  style={styles.input}
-                  value={editForm.limit}
-                  onChange={(e) => setEditForm({ ...editForm, limit: e.target.value })}
-                  placeholder="Limite total"
-                />
-                <input
-                  style={styles.input}
-                  value={editForm.closingDay}
-                  onChange={(e) => setEditForm({ ...editForm, closingDay: e.target.value })}
-                  placeholder="Fechamento"
-                />
-                <input
-                  style={styles.input}
-                  value={editForm.dueDay}
-                  onChange={(e) => setEditForm({ ...editForm, dueDay: e.target.value })}
-                  placeholder="Vencimento"
-                />
-              </div>
-              <div style={styles.actionsRow}>
-                <button style={styles.primaryButton} onClick={saveEdit}>Salvar alterações</button>
-                <button style={styles.secondaryButton} onClick={() => setEditing(false)}>Cancelar</button>
-              </div>
-            </div>
-          )}
-        </section>
-
-        <section style={styles.sectionCard}>
-          <div style={styles.sectionHeader}>
-            <h2 style={styles.sectionTitle}>Compras</h2>
-            <IconButton label="Nova compra" onClick={() => alert('Abrir cadastro de nova compra')}>＋</IconButton>
+        <section className="card">
+          <div className="purchaseHeader">
+            <div className="title">Compras</div>
+            <button className="iconBtn">＋</button>
           </div>
 
           <input
-            style={styles.input}
+            className="input"
             placeholder="Buscar compra"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
           />
 
-          <div style={styles.list}>
-            {filteredPurchases.map((item) => (
-              <div key={item.id} style={styles.purchaseRow}>
-                <div>
-                  <div style={styles.purchaseTitle}>{item.title}</div>
-                  <div style={styles.purchaseMeta}>{item.date} • {item.category}</div>
+          <div className="purchaseList" style={{ marginTop: 12 }}>
+            {compras.map((compra) => (
+              <div key={compra.id} className="purchaseCard">
+                <div className="purchaseTitle">{compra.descricao}</div>
+                <div className="purchaseSub">{compra.data} • {compra.categoria}</div>
+                <div className="purchaseBottom">
+                  <div>
+                    <div className="purchaseValue">{moeda(compra.valor)}</div>
+                    <div className="purchaseSub">{compra.parcelas}</div>
+                  </div>
+                  <button className="miniBtn">Antecipar</button>
                 </div>
-                <div style={styles.purchaseAmount}>{brl(item.amount)}</div>
-                <div style={styles.purchaseInstallment}>{item.installment}</div>
-                <button style={styles.ghostButton}>Antecipar</button>
               </div>
             ))}
           </div>
         </section>
+
+        <div className="bottomNav">
+          <div className="navItem">Início</div>
+          <div className="navItem">Contas</div>
+          <div className="navItem">Lançar</div>
+          <div className="navItem active">Cartões</div>
+          <div className="navItem">Mais</div>
+        </div>
       </div>
     </main>
   );
 }
-
-const styles = {
-  page: {
-    minHeight: '100vh',
-    background: 'radial-gradient(circle at top, #1f2f74 0%, #06113a 45%, #020817 100%)',
-    color: '#eef2ff',
-    fontFamily: 'Inter, Arial, sans-serif',
-    padding: 16,
-  },
-  shell: {
-    width: '100%',
-    maxWidth: 980,
-    margin: '0 auto',
-    display: 'grid',
-    gap: 16,
-  },
-  sectionCard: {
-    background: 'rgba(8, 16, 48, 0.9)',
-    border: '1px solid rgba(129, 140, 248, 0.18)',
-    borderRadius: 28,
-    padding: 20,
-    boxShadow: '0 10px 35px rgba(0,0,0,0.22)',
-  },
-  sectionHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 14,
-  },
-  sectionLabel: { fontSize: 16, color: '#b7c0e5' },
-  sectionTitle: { margin: 0, fontSize: 24 },
-  selectWrap: { width: '100%' },
-  select: {
-    width: '100%', background: '#030b2d', color: '#fff', border: '1px solid rgba(129,140,248,.22)',
-    borderRadius: 18, padding: '18px 16px', fontSize: 18, outline: 'none'
-  },
-  iconButton: {
-    width: 44, height: 44, borderRadius: 14, border: '1px solid rgba(129,140,248,.28)', background: 'rgba(99,102,241,.18)',
-    color: '#fff', fontSize: 24, cursor: 'pointer'
-  },
-  cardTopRow: { display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' },
-  cardNameRow: { display: 'flex', alignItems: 'center', gap: 10 },
-  cardName: { fontSize: 34, margin: 0 },
-  cardMeta: { margin: '6px 0 0', color: '#b7c0e5', fontSize: 18 },
-  invoiceWrap: { textAlign: 'right' },
-  invoiceLabel: { color: '#b7c0e5', fontSize: 16 },
-  invoiceValue: { fontSize: 34, fontWeight: 800 },
-  kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 14, marginTop: 18 },
-  kpiCard: { background: '#071140', border: '1px solid rgba(129,140,248,.18)', borderRadius: 22, padding: 18, minHeight: 104 },
-  kpiHighlight: { background: 'rgba(99,102,241,.22)' },
-  kpiLabel: { display: 'block', color: '#b7c0e5', fontSize: 16, marginBottom: 10 },
-  kpiValue: { fontSize: 28, lineHeight: 1.1 },
-  editPanel: { marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(129,140,248,.15)' },
-  formGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 12 },
-  input: {
-    width: '100%', background: '#030b2d', color: '#fff', border: '1px solid rgba(129,140,248,.22)', borderRadius: 16,
-    padding: '16px 14px', fontSize: 18, outline: 'none', boxSizing: 'border-box'
-  },
-  actionsRow: { display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' },
-  primaryButton: {
-    background: 'linear-gradient(90deg,#7180ff,#8a63ff)', color: '#fff', border: 0, borderRadius: 16, padding: '14px 18px', fontSize: 18, fontWeight: 700
-  },
-  secondaryButton: { background: '#16224f', color: '#fff', border: 0, borderRadius: 16, padding: '14px 18px', fontSize: 18 },
-  list: { display: 'grid', gap: 10, marginTop: 14 },
-  purchaseRow: {
-    display: 'grid', gridTemplateColumns: '1.5fr .8fr .6fr auto', gap: 12, alignItems: 'center',
-    padding: '14px 0', borderBottom: '1px solid rgba(129,140,248,.12)'
-  },
-  purchaseTitle: { fontSize: 18, fontWeight: 700 },
-  purchaseMeta: { color: '#b7c0e5', marginTop: 4 },
-  purchaseAmount: { fontSize: 18, fontWeight: 700 },
-  purchaseInstallment: { color: '#d6dcff' },
-  ghostButton: { background: '#16224f', color: '#fff', border: '1px solid rgba(129,140,248,.18)', borderRadius: 14, padding: '12px 16px', fontWeight: 700 },
-};
